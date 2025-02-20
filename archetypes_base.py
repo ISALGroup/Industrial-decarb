@@ -541,8 +541,8 @@ def main(flowlist, unitlist, f_print = False):
         print_flows(flowlist)
     
 
-def flows_to_file(flowlist):
-    with open('pulp_plant_flows.csv', 'w', newline='') as csvfile:
+def flows_to_file(filename, flowlist):
+    with open(filename + '_flows.csv', 'w', newline='') as csvfile:
         fieldnames = ['name', 'components', 'flow_type',
                                                'temperature', 'pressure',
                                                'composition', 'origin', 'destination',
@@ -554,8 +554,8 @@ def flows_to_file(flowlist):
         for flow in flowlist:
             writer.writerow(flow.attributes)
 
-def unit_recap_to_file(flowlist, unitlist):
-    with open('pulp_plant_units.csv', 'w', newline='') as csvfile:
+def unit_recap_to_file(filename, flowlist, unitlist):
+    with open(filename +'_units.csv', 'w', newline='') as csvfile:
         unitwriter = csv.writer(csvfile)
         for unit in unitlist:
             unitwriter.writerow([unit.name])
@@ -586,8 +586,8 @@ def unit_recap_to_file(flowlist, unitlist):
                 unitwriter.writerow(['', unit.reaction_heat])
                 
                 
-def utilities_recap(flowlist, unitlist):
-    with open('pulp_plant_utilites.csv', 'w', newline='') as csvfile:
+def utilities_recap(filename, flowlist, unitlist):
+    with open(filename + '_utilites.csv', 'w', newline='') as csvfile:
         utilwriter = csv.writer(csvfile)
         utilwriter.writerow(['Unit name', 'Heat demand (Steam kJ)', 'Heat demand (Fuel kJ)', 'Electricity demand (kWh)', 'Heat produced (kJ)', 'Fuel produced (kJ)' ,'Electricity produced (kWh)', 'Waste heat (kJ)'])
         for unit in unitlist:
