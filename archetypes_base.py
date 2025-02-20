@@ -245,13 +245,11 @@ class Unit:
                     for flow in calculated_flows:
                         flow_name = flow['name']
                         flow_presence = flow_already_present(flow_name, flowlist)
-                        print(flow_presence)
                         if 'Set shear' not in flow:
                             self.set_flow(flow, flowlist, unitlist)
                         elif not flow['Set shear']:
                             self.set_flow(flow, flowlist, unitlist)
                         elif flow['Set shear'] == True and flow_presence:
-                            print(flow_already_present(flow_name, flowlist))
                             shear_stream_index = find_Flow_index(flow['name'], flowlist)
                             original_Flow = flowlist[shear_stream_index]
                             o_mfr = original_Flow.attributes['mass_flow_rate']
@@ -283,18 +281,15 @@ class Unit:
                         if len(calculated_object) == 1 and 'Heat of reaction' in calculated_object:
                             self.reaction_heat = calculated_object['Heat of reaction']
                             calculations.remove(calculated_object)
-                    print(calculations)
                     calculated_flows = calculations
                     for flow in calculated_flows:
                         flow_name = flow['name']
                         flow_presence = flow_already_present(flow_name, flowlist)
-                        print(flow_presence)
                         if 'Set shear' not in flow:
                             self.set_flow(flow, flowlist)
                         elif not flow['Set shear']:
                             self.set_flow(flow, flowlist)
                         elif flow['Set shear'] == True and flow_presence:
-                            print(flow_already_present(flow_name, flowlist))
                             shear_stream_index = find_Flow_index(flow['name'], flowlist)
                             original_Flow = flowlist[shear_stream_index]
                             o_mfr = original_Flow.attributes['mass_flow_rate']
@@ -314,13 +309,10 @@ class Unit:
         
         else:
             if self.is_calc:
-                print('here')
                 return
             elif self.count_calc_flows(flowlist) != self.required_calc_flows:
-                print('there')
                 return
             else:
-                print('no, here')
                 calcflows = []
                 for calcflow in self.calculations[0]:
                     if calcflow in self.input_flows or calcflow in self.output_flows:
@@ -336,18 +328,15 @@ class Unit:
                     if len(calculated_object) == 1 and 'Heat of reaction' in calculated_object:
                         self.reaction_heat = calculated_object['Heat of reaction']
                         calculations.remove(calculated_object)
-                print(calculations)
                 calculated_flows = calculations
                 for flow in calculated_flows:
                     flow_name = flow['name']
                     flow_presence = flow_already_present(flow_name, flowlist)
-                    print(flow_presence)
                     if 'Set shear' not in flow:
                         self.set_flow(flow, flowlist)
                     elif not flow['Set shear']:
                         self.set_flow(flow, flowlist)
                     elif flow['Set shear'] == True and flow_presence:
-                        print(flow_already_present(flow_name, flowlist))
                         shear_stream_index = find_Flow_index(flow['name'], flowlist)
                         original_Flow = flowlist[shear_stream_index]
                         o_mfr = original_Flow.attributes['mass_flow_rate']
