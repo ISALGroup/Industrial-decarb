@@ -413,7 +413,7 @@ class Unit:
                     if Flow.attributes['name'] == flow:
                         m_out += Flow.attributes['mass_flow_rate']
                         break
-            if (m_out-m_in)/m_in < 0.001:
+            if  abs(m_out-m_in)/m_in < 0.001:
                 print(self.name + ' mass balance ok: mass in = ' + str(m_in) + 'mass out = ' + str(m_out) )
                 return True
             else:
@@ -441,13 +441,13 @@ class Unit:
                     print(self.name + ' heat balance ok: Qin = ' + str(Q_in) + 'Qout = ' + str(Q_out) )
                     return True
                 elif Q_out == 0 and abs(Q_in) >= 0.001:
-                    print(self.name + ' heat balance not ok: Qin = ' + str(Q_in) + 'Qout = ' + str(Q_out) )
+                    print(self.name + ' heat balance NOT ok: Qin = ' + str(Q_in) + 'Qout = ' + str(Q_out) )
                     return False
                 elif abs(1 - Q_in/Q_out) < 0.001:
                     print(self.name + ' heat balance ok: Qin = ' + str(Q_in) + 'Qout = ' + str(Q_out) )
                     return True
                 else:
-                    print(self.name + ' heat balance not ok: Qin = ' + str(Q_in) + 'Qout = ' + str(Q_out) )
+                    print(self.name + ' heat balance NOT ok: Qin = ' + str(Q_in) + 'Qout = ' + str(Q_out) )
                     return False
             
             elif not hasattr(self, 'heat_loss') and hasattr(self, 'reaction_heat'):
@@ -457,13 +457,13 @@ class Unit:
                     print(self.name + ' heat balance ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qreaction =' + str(r_heat))
                     return True
                 elif Q_out == 0 and abs(fake_Q_in) >= 0.001:
-                    print(self.name + ' heat balance not ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qreaction =' + str(r_heat))
+                    print(self.name + ' heat balance NOT ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qreaction =' + str(r_heat))
                     return False
                 elif abs(1 - fake_Q_in/Q_out) < 0.001:
                     print(self.name + ' heat balance ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qreaction =' + str(r_heat))
                     return True
                 else:
-                    print(self.name + ' heat balance not ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qreaction =' + str(r_heat))
+                    print(self.name + ' heat balance NOT ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qreaction =' + str(r_heat))
                     return False
                 
             
@@ -474,13 +474,13 @@ class Unit:
                     print(self.name + 'heat balance ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qloss =' + str(h_loss))
                     return True
                 elif fake_Q_out == 0 and Q_in >= 0.001:
-                    print(self.name + ' heat balance not ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qloss =' + str(h_loss))
+                    print(self.name + ' heat balance NOT ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qloss =' + str(h_loss))
                     return False
                 elif abs(1 - Q_in/fake_Q_out) < 0.001:
                     print(self.name + ' heat balance ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qloss =' + str(h_loss))
                     return True
                 else:
-                    print(self.name + ' heat balance not ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qloss =' + str(h_loss))
+                    print(self.name + ' heat balance NOT ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qloss =' + str(h_loss))
                     return False
             
             
@@ -493,13 +493,13 @@ class Unit:
                     print(self.name + ' heat balance ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qreaction =' + str(r_heat) + ', Qloss =' + str(h_loss))
                     return True
                 elif fake_Q_out == 0 and abs(fake_Q_in) >= 0.001:
-                    print(self.name + ' heat balance not ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qreaction =' + str(r_heat) + ', Qloss =' + str(h_loss))
+                    print(self.name + ' heat balance NOT ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qreaction =' + str(r_heat) + ', Qloss =' + str(h_loss))
                     return False
                 elif abs(1 - (fake_Q_in/fake_Q_out)) < 0.001:
                     print(self.name + ' heat balance ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qreaction =' + str(r_heat) + ', Qloss =' + str(h_loss))
                     return True
                 else:
-                    print(self.name + ' heat balance not ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qreaction =' + str(r_heat) + ', Qloss =' + str(h_loss))
+                    print(self.name + ' heat balance NOT ok: Qin = ' + str(Q_in) + ', Qout = ' + str(Q_out) + ', Qreaction =' + str(r_heat) + ', Qloss =' + str(h_loss))
                     return False
                 
         else:
