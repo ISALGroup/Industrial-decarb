@@ -413,7 +413,13 @@ class Unit:
                     if Flow.attributes['name'] == flow:
                         m_out += Flow.attributes['mass_flow_rate']
                         break
-            if  abs(m_out-m_in)/m_in < 0.001:
+            if m_in == 0 and m_out == 0:
+                print(self.name + ' mass balance ok: mass in = ' + str(m_in) + 'mass out = ' + str(m_out) )
+                return True
+            elif m_in == 0:
+                print(self.name + ' mass balance not ok: mass in = ' + str(m_in) + 'mass out = ' + str(m_out) )
+                return False
+            elif  abs(m_out-m_in)/m_in < 0.001:
                 print(self.name + ' mass balance ok: mass in = ' + str(m_in) + 'mass out = ' + str(m_out) )
                 return True
             else:
