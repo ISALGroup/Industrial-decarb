@@ -241,6 +241,10 @@ class Unit:
                         if len(calculated_object) == 1 and 'Heat of reaction' in calculated_object:
                             self.reaction_heat = calculated_object['Heat of reaction']
                             calculations.remove(calculated_object)
+                    for calculated_object in calculations:
+                        if len(calculated_object) == 1 and 'Emissions' in calculated_object:
+                            self.emissions = calculated_object['Emissions']
+                            calculations.remove(calculated_object)
                     calculated_flows = calculations
                     for flow in calculated_flows:
                         flow_name = flow['name']
@@ -280,6 +284,10 @@ class Unit:
                     for calculated_object in calculations:
                         if len(calculated_object) == 1 and 'Heat of reaction' in calculated_object:
                             self.reaction_heat = calculated_object['Heat of reaction']
+                            calculations.remove(calculated_object)
+                    for calculated_object in calculations:
+                        if len(calculated_object) == 1 and 'Emissions' in calculated_object:
+                            self.emissions = calculated_object['Emissions']
                             calculations.remove(calculated_object)
                     calculated_flows = calculations
                     for flow in calculated_flows:
@@ -327,6 +335,10 @@ class Unit:
                 for calculated_object in calculations:
                     if len(calculated_object) == 1 and 'Heat of reaction' in calculated_object:
                         self.reaction_heat = calculated_object['Heat of reaction']
+                        calculations.remove(calculated_object)
+                for calculated_object in calculations:
+                    if len(calculated_object) == 1 and 'Emissions' in calculated_object:
+                        self.emissions = calculated_object['Emissions']
                         calculations.remove(calculated_object)
                 calculated_flows = calculations
                 for flow in calculated_flows:
@@ -417,13 +429,13 @@ class Unit:
                 print(self.name + ' mass balance ok: mass in = ' + str(m_in) + 'mass out = ' + str(m_out) )
                 return True
             elif m_in == 0:
-                print(self.name + ' mass balance not ok: mass in = ' + str(m_in) + 'mass out = ' + str(m_out) )
+                print(self.name + ' mass balance NOT ok: mass in = ' + str(m_in) + 'mass out = ' + str(m_out) )
                 return False
             elif  abs(m_out-m_in)/m_in < 0.001:
                 print(self.name + ' mass balance ok: mass in = ' + str(m_in) + 'mass out = ' + str(m_out) )
                 return True
             else:
-                print(self.name + ' mass balance not ok: mass in = ' + str(m_in) + 'mass out = ' + str(m_out) )
+                print(self.name + ' mass balance NOT ok: mass in = ' + str(m_in) + 'mass out = ' + str(m_out) )
                 return False
             
                
@@ -535,6 +547,8 @@ def main(flowlist, unitlist, f_print = False):
     if f_print:
         print_flows(flowlist)
     
+    return flowlist
+    
 
 def flows_to_file(filename, flowlist):
     with open(filename + '_flows.csv', 'w', newline='') as csvfile:
@@ -579,6 +593,22 @@ def unit_recap_to_file(filename, flowlist, unitlist):
             if hasattr(unit, 'reaction_heat'):
                 unitwriter.writerow(['Reaction heat', ''])
                 unitwriter.writerow(['', unit.reaction_heat])
+            
+            if hasattr(unit, 'emissions'):
+                unitwriter.writerow(['Emissions', 'Greenhouse gases (total kg)','Greenhouse gases (kgCO2eq.)', 'Copollutants (kg total)'])
+                ghg_emissions = 0
+                ghg_co2eq = 0
+                copollutants = 0
+                ghgs = ['CO2', 'CH4', 'N2O', 'HFC', 'CF4', 'SF6']
+                # Emissions factors from epa emissions equivalencies calculator https://www.epa.gov/energy/greenhouse-gas-equivalencies-calculator. HFC selected as HCFC-22 by default
+                ghg_ef = {'CO2' : 1, 'CH4' : 28 , 'N2O' : 265, 'HFC' : 1810, 'CF4' : 6630, 'SF6' : 30130}
+                for emission in unit.emissions:
+                    if emission in ghgs:
+                        ghg_emissions += unit.emissions[emission]
+                        ghg_co2eq += unit.emissions[emission]*ghg_ef[emission]
+                    else:
+                        copollutants += unit.emissions[emission]
+                unitwriter.writerow(['', ghg_emissions, ghg_co2eq, copollutants])
                 
                 
 def utilities_recap(filename, flowlist, unitlist):
@@ -614,7 +644,7 @@ def utilities_recap(filename, flowlist, unitlist):
                     hd_s += (- Flow.attributes['heat_flow_rate'])
                 
                 if Flow.attributes['flow_type'] == 'Fuel (produced on-site)':
-                    f_p += Flow.atributes['combustion_energy_content']
+                    f_p += Flow.attributes['combustion_energy_content']
                 
                 if Flow.attributes['flow_type'] == 'Electricity (produced on-site)':
                     ep += Flow.attributes['elec_flow_rate']
