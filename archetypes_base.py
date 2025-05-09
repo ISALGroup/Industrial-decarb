@@ -547,7 +547,7 @@ def main(flowlist, unitlist, f_print = False):
     if f_print:
         print_flows(flowlist)
     
-    return flowlist
+    return flowlist, unitlist
     
 
 def flows_to_file(filename, flowlist):
@@ -614,7 +614,7 @@ def unit_recap_to_file(filename, flowlist, unitlist):
 def utilities_recap(filename, flowlist, unitlist):
     with open(filename + '_utilites.csv', 'w', newline='') as csvfile:
         utilwriter = csv.writer(csvfile)
-        utilwriter.writerow(['Unit name', 'Heat demand (Steam kJ)', 'Heat demand (Fuel kJ)', 'Electricity demand (kWh)', 'Heat produced (kJ)', 'Fuel produced (kJ)' ,'Electricity produced (kWh)', 'Waste heat (kJ)'])
+        utilwriter.writerow(['Unit name', 'Heat demand (Steam kJ)', 'Heat demand (Fuel kJ)', 'Electricity demand (kWh)', 'Heat produced (kJ)', 'Fuel produced (kJ)' ,'Electricity produced (kWh)', 'Waste heat (kJ)', 'Compressed air demand (kg)', 'Compressed air produced (kg)'])
         for unit in unitlist:
             hd_s = 0
             hd_f = 0
@@ -623,11 +623,13 @@ def utilities_recap(filename, flowlist, unitlist):
             f_p = 0
             ep = 0
             wh = 0
+            ca = 0
+            ca_p = 0
             for flowin in unit.input_flows:
                 flowin_index = find_Flow_index(flowin, flowlist)
                 Flow = flowlist[flowin_index]
                 
-                if Flow.attributes['flow_type'] == 'Steam':
+                if Flow.attributes['flow_type'] == 'Steam' or Flow.attributes['flow_type'] == 'Hot water' :
                     hd_s += Flow.attributes['heat_flow_rate']
                 
                 if Flow.attributes['flow_type'] == 'Fuel':
@@ -635,6 +637,9 @@ def utilities_recap(filename, flowlist, unitlist):
                 
                 if Flow.attributes['flow_type'] == 'Electricity':
                     ed += Flow.attributes['elec_flow_rate']
+                
+                if Flow.attributes['flow_type'] == 'Compressed air':
+                    ca += Flow.attributes['mass_flow_rate']
                 
             for flowout in unit.output_flows:
                 flowout_index = find_Flow_index(flowout, flowlist)
@@ -654,7 +659,10 @@ def utilities_recap(filename, flowlist, unitlist):
                 
                 if Flow.attributes['flow_type'] == 'Waste' or Flow.attributes['flow_type'] == 'Waste water' or Flow.attributes['flow_type'] == 'Exhaust':
                     wh += Flow.attributes['heat_flow_rate']
+                
+                if Flow.attributes['flow_type'] == 'Compressed air (produced on-site)':
+                    ca_p += Flow.attributes['mass_flow_rate']
             
-            utilwriter.writerow([unit.name, str(hd_s), str(hd_f), str(ed), str(h_p), str(f_p) ,str(ep), str(wh)])
+            utilwriter.writerow([unit.name, str(hd_s), str(hd_f), str(ed), str(h_p), str(f_p) ,str(ep), str(wh), str(ca), str(ca_p)])
 
 
