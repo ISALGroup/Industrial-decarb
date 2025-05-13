@@ -24,26 +24,26 @@ boilers = 'default'
 
 
 #Electricity prices: https://www.eia.gov/electricity/data.php#sales
-eia_elec_costs = pd.read_excel('HS861 2010-.xlsx', sheet_name= 'Total Electric Industry')
+#eia_elec_costs = pd.read_excel('HS861 2010-.xlsx', sheet_name= 'Total Electric Industry')
 # Cost in cents/kWh
 avg_cost_elec_usa2023 = 16
 # Cost in $/kWh
 avg_cost_elec_usa2023_unit = 0.16
 #NG prices: https://www.eia.gov/dnav/ng/ng_pri_sum_a_EPG0_PIN_DMcf_a.htm
-eia_ng_costs = pd.read_excel('NG_PRI_SUM_A_EPG0_PIN_DMCF_A.xls', sheet_name= 'Data 1')
+#eia_ng_costs = pd.read_excel('NG_PRI_SUM_A_EPG0_PIN_DMCF_A.xls', sheet_name= 'Data 1')
 #Cost in $/Mcf
 eia_cost_ng_usa2024 = 3.93
 #Cost in $/kJ (1 Mcf = 1 093 000 kJ: https://www.eia.gov/energyexplained/units-and-calculators/energy-conversion-calculators.php)
 eia_cost_ng_usa2024_unit = 3.93/1093000.
 #Coal prices: https://www.eia.gov/coal/data.php - Average delivered prices to end use sector by Census division and state
-eia_coal_costs = pd.read_excel('table34.xlsx')
+#eia_coal_costs = pd.read_excel('table34.xlsx')
 # Cost in dollars per short ton
 avg_cost_coal_US = 83.39
 # Cost in dollar per kJ (1 short ton = 19 856 151 kJ https://www.eia.gov/energyexplained/units-and-calculators/energy-conversion-calculators.php)
 avg_cost_coal_US_unit = 83.39/19856151.
 #Electricity assumed to be in kWh, all fuel in kJ & LHV
 #Grid emission factors: eGrid from EPA https://www.epa.gov/egrid/summary-data
-grid_ef = pd.read_excel('egrid2023_summary_tables_rev1.xlsx', sheet_name= 'Table 1')
+#grid_ef = pd.read_excel('egrid2023_summary_tables_rev1.xlsx', sheet_name= 'Table 1')
 #Grid EF in lbs/MWh
 usa_grid_ef2023 = {'CO2' : 771.5, 'CH4' : 0.057, 'N2O' : 0.008, 'NOx' : 0.5, 'SO2' : 0.361}
 #Grid EF in kg/kWh
