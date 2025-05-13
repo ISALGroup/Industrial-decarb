@@ -33,11 +33,11 @@ class Boiler():
     
     def run_boiler_reqduty(self):
         self.duty = min(self.req_duty, self.max_duty)
-        results =  self.model_req_duty(self, self.duty)
+        results =  self.model_req_duty(self.duty)
         self.current_consumption = results['Fuel in']
         emissions = {} 
         for ef in self.fuel_ef:
-            emissions[ef] = self.current_consumption * ef
+            emissions[ef] = self.current_consumption * self.fuel_ef[ef]
         self.emissions = emissions
         
     

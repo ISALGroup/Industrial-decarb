@@ -665,4 +665,28 @@ def utilities_recap(filename, flowlist, unitlist):
             
             utilwriter.writerow([unit.name, str(hd_s), str(hd_f), str(ed), str(h_p), str(f_p) ,str(ep), str(wh), str(ca), str(ca_p)])
 
+def calc_heat_demand(flowlist, unitlist):
+    heat_demand = 0
+    for unit in unitlist:
+        hd_s = 0
+        for flowin in unit.input_flows:
+            flowin_index = find_Flow_index(flowin, flowlist)
+            Flow = flowlist[flowin_index]
+            
+            if Flow.attributes['flow_type'] == 'Steam' or Flow.attributes['flow_type'] == 'Hot water' :
+                hd_s += Flow.attributes['heat_flow_rate']
+            
+            
+        for flowout in unit.output_flows:
+            flowout_index = find_Flow_index(flowout, flowlist)
+            Flow = flowlist[flowout_index]
+            
+            if Flow.attributes['flow_type'] == 'Condensate':
+                hd_s += (- Flow.attributes['heat_flow_rate'])
+            
+
+            if Flow.attributes['flow_type'] == 'Steam (produced on-site)':
+                hd_s += (-Flow.attributes['heat_flow_rate'])
+        heat_demand += hd_s
+    return heat_demand
 
