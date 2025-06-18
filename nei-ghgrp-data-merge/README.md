@@ -117,30 +117,6 @@ The script automatically detects column names to handle variations in EPA data f
 - Logs warnings for data quality issues
 - Provides fallback options for aggregation failures
 
-## Troubleshooting
-
-### Common Issues
-
-**File not found errors**:
-- Ensure Excel files are in the same directory as the script
-- Check file names match exactly (case-sensitive on some systems)
-
-**Low match counts**:
-- Check if industry filters are too restrictive
-- Verify coordinate data quality
-- Review facility name standardization
-
-**Memory issues**:
-- Process smaller subsets of data
-- Increase available RAM
-- Use 64-bit Python installation
-
-### Performance Tips
-
-- **Runtime**: Typically 10-15 minutes for full datasets
-- **Memory**: Requires ~4GB RAM for large datasets
-- **Storage**: Output file is usually 5-10MB
-
 ## Data Sources
 
 - **NEI Data**: US EPA National Emissions Inventory (2020)
