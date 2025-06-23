@@ -17,8 +17,10 @@
 # "Coronary heart disease among adults aged greater than or equal to 18 years (percentile)" 
 # "Low life expectancy (percentile)"
 #
-# census tract to lat/lon data downloaded here: 
+# 2023 census tract to lat/lon data downloaded here: 
 #    https://www2.census.gov/geo/tiger/TIGER2023/TRACT/
+# 2010 census tract data downloaded here:
+#   https://www2.census.gov/geo/pvs/tiger2010st/ 
 #
 # Inputs:   
 #         
@@ -71,27 +73,27 @@ base_dir = "/Users/Ben L/Library/CloudStorage/Box-Box/Industrial Plant Raw Data/
 
 # List all folder paths starting with tl_2023_ and ending in _tract
 tract_dirs <- list.dirs(base_dir, recursive = FALSE, full.names = TRUE)
-tract_dirs <- tract_dirs[grepl("tl_2023_\\d{2}_tract$", tract_dirs)]
+tract_dirs <- tract_dirs[grepl("tl_2010_\\d{2}_tract10$", tract_dirs)]
 
 # Build full path to each .shp file
 shapefile_paths <- file.path(tract_dirs, paste0(basename(tract_dirs), ".shp"))  # folder name = .shp name
 
 # Read and combine
-tracts_all_2023 <- map_dfr(shapefile_paths, ~ st_read(.x, quiet = TRUE), .id = "source")
+tracts_all_2010 <- map_dfr(shapefile_paths, ~ st_read(.x, quiet = TRUE), .id = "source")
 
 # transform CRS
-tracts_all_2023 <- st_transform(tracts_all_2023, crs = 4326)
+tracts_all_2010 <- st_transform(tracts_all_2010, crs = 4326)
 
 
 # merge tracts onto facility_data
-facility_w_tract = st_join(facility_data_sf, tracts_all_2023, join=st_intersects)
+facility_w_tract = st_join(facility_data_sf, tracts_all_2010, join=st_intersects)
 
 # merge ej indicators onto facility data
 facility_w_ej = left_join(facility_w_tract, cjest,
-                          by = c("GEOID" = "census_tract_2010_id")) |>
-  select(facility_id, year, county, county_fips, state, geometry, GEOID, identified_as_disadvantaged,
+                          by = c("GEOID10" = "census_tract_2010_id")) |>
+  select(facility_id, year, county, county_fips, state, geometry, GEOID10, identified_as_disadvantaged,
          total_population, is_low_income, pm2_5_in_the_air, ends_with("percentile")) |>
-  rename(census_tract = "GEOID",
+  rename(census_tract = "GEOID10",
          coronary_hear_disease_18yrs_older_pct = 
            "coronary_heart_disease_among_adults_aged_greater_than_or_equal_to_18_years_percentile",
          diabetes_18yrs_older_pct = 
