@@ -6,8 +6,9 @@ library(cowplot)
 library(stringr)
 library(grid)
 library(janitor)
+library(here)
 
-ghgrp_df <- read_excel(here("data/raw/rlps_ghg_emitter_subpart_w_NAICS.xlsx")) %>%
+ghgrp_df <- read_excel(here("state_fact_sheets/data/raw/rlps_ghg_emitter_subpart_w_NAICS.xlsx")) %>%
   filter(state == "MN", year == 2022) %>%
   mutate(primary_naics = as.character(primary_naics)) %>%
   rename(naics_code = primary_naics) %>% 
@@ -40,7 +41,7 @@ subsector_colors <- c("311221" = "#6D7D33",
 mn_highlight_naics <- c("325193", "322120", "311313") # these are the NAICS codes that should get labels in the chart
 
 # Load NAICS description data
-target_naics <- read_excel(here("data/raw/target_NAICS.xlsx")) %>%
+target_naics <- read_excel(here("state_fact_sheets/data/raw/target_NAICS.xlsx")) %>%
   clean_names() %>%
   mutate(naics_code = as.character(naics_code)) 
 
@@ -65,6 +66,10 @@ plot_data <- ghgrp_df %>%
     pct = emission / sum(emission) * 100,
     label = ifelse(highlight, paste0(description, "\n", round(pct, 1), "%"), ""),
     fill_color = ifelse(mapped_sector == "Other Manufacturing", "#DCE1E5", subsector_colors[mapped_sector]))
+
+other_manufacturing_pct <- plot_data %>% 
+  group_by(sector) %>% 
+  summarise(pct_sum = sum(pct))
 
 plot_data <- plot_data %>%
   arrange(desc(mapped_sector)) %>%
