@@ -33,7 +33,7 @@ ghgrp_with_fuel <- ghgrp_filtered %>%
   group_by(facility_name, fuel_type) %>%
   summarize(
     total_co2e = sum(ghg_quantity, na.rm = TRUE),
-    ghg_name = first(ghg_name),  # Optional
+    ghg_name = "Tons CO2 eq",  # 
     .groups = "drop"
   )
 
@@ -48,7 +48,18 @@ ghgrp_summary <- bind_rows(
   ghgrp_missing_fuel %>% rename(total_co2e = ghg_quantity)
 )
 
+
+# Summarize by facility_id, fuel_type, and ghg_name
+ghgrp_summary_by_gas <- ghgrp_filtered %>%
+  group_by(facility_name, fuel_type, ghg_name) %>%
+  summarize(
+    total_ghg = sum(ghg_quantity, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
 writexl::write_xlsx(list(
   "Emissions by Unit" = ghgrp_filtered,
-  "Emissions by Facility and Fuel"  = ghgrp_summary),
+  "Emissions by Fclty, Fuel"  = ghgrp_summary,
+  "Emissions by Fclty, Fuel, GHG" = ghgrp_summary_by_gas),
 path = "state_fact_sheets/data/modified/mi_emissions_summary.xlsx")
