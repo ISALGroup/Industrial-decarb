@@ -25,17 +25,22 @@ ghgrp_df <- read_excel("state_fact_sheets/data/raw/rlps_ghg_emitter_subpart_w_NA
     TRUE ~ "Other"
   )) %>% 
   mutate(description = if_else(is.na(description), "Other Manufacturing", description)) %>% 
+  mutate(description = if_else(naics_code == "325613", "Other Chemicals Manufacturing", description)) %>% 
   select(sector, naics_code, description, facility_id, facility_name, co2e_emission)
 
 output_table <- ghgrp_df %>%
-  mutate(description = ifelse(sector == "Other Manufacturing", "Other Manufacturing", description)) %>%
-  group_by(sector, description) %>%
+  mutate(
+    # Collapse Other Manufacturing into one category
+    description = ifelse(sector == "Other", "Other Manufacturing", description),
+    naics_code = ifelse(sector == "Other", NA, naics_code)
+  ) %>%
+  group_by(sector, description, naics_code) %>%
   summarise(co2e_total = sum(co2e_emission, na.rm = TRUE), .groups = "drop") %>%
   mutate(
     percent_of_total = round(100 * co2e_total / sum(co2e_total), 2)
-  ) %>% 
-  arrange(desc(sector))
-
+  ) %>%
+  arrange(desc(sector)) %>%
+  select(naics_code, description, co2e_total, percent_of_total, sector)
 
 # Write to Excel
 writexl::write_xlsx(output_table, "state_fact_sheets/data/modified/il_naics_emissions_percentages_2023.xlsx")
