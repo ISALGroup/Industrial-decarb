@@ -44,6 +44,12 @@ target_naics <- read_excel(here("state_fact_sheets/data/raw/target_NAICS.xlsx"))
   clean_names() %>%
   mutate(naics_code = as.character(naics_code)) 
 
+mi_target_naics_present <- ghgrp_df %>%
+  inner_join(target_naics, by = "naics_code") %>%
+  group_by(naics_code, description) %>%
+  summarise(total_emissions = sum(co2e_emission, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(total_emissions))
+
 plot_data <- ghgrp_df %>%
   left_join(target_naics, by = "naics_code") %>% 
   select(facility_id, county, county_fips, co2e_emission, naics_code, description) %>% 
@@ -53,8 +59,8 @@ plot_data <- ghgrp_df %>%
     mapped_sector = ifelse(naics_code %in% mn_target_naics, naics_code, "Other Manufacturing"),
     sector = case_when(
       naics_code %in% c("325193", "325110", "325311") ~ "Chemicals",
-      naics_code %in% c("311221", "311224", "311225", "311313", "311611", "312140") ~ "Food & Beverage",
-      naics_code %in% c("322120") ~ "Pulp & Paper",
+      naics_code %in% c("311221", "311224", "311225", "311313", "311611", "312140") ~ "Pulp & Paper",
+      naics_code %in% c("322120", "311942") ~ "Food & Beverage",
       TRUE ~ "Other Manufacturing"
     ),
     highlight = naics_code %in% mn_highlight_naics
