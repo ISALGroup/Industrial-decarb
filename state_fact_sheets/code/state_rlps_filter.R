@@ -28,12 +28,12 @@ ghgrp_df <- read_excel("state_fact_sheets/data/raw/rlps_ghg_emitter_subpart_w_NA
   select(sector, naics_code, description, facility_id, facility_name, co2e_emission)
 
 output_table <- ghgrp_df %>%
-  group_by(sector, description, naics_code) %>%
+  mutate(description = ifelse(sector == "Other Manufacturing", "Other Manufacturing", description)) %>%
+  group_by(sector, description) %>%
   summarise(co2e_total = sum(co2e_emission, na.rm = TRUE), .groups = "drop") %>%
   mutate(
     percent_of_total = round(100 * co2e_total / sum(co2e_total), 2)
-  ) %>%
-  select(sector, naics_code, description, co2e_total, percent_of_total) %>%
+  ) %>% 
   arrange(desc(sector))
 
 
