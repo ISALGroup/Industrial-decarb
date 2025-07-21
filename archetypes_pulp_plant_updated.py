@@ -442,7 +442,7 @@ def Dryerfunc_dewatpulp(dewat_pulp_flow, coeff):
     cp_steam = 1.89 #kJ/kg.K
     cp_dry_pulp = 2.3
     cp_air = 1.01
-    vap_heat = 2256.4 #kJ/K
+    vap_heat = 2256.4 #kJ/kg
     Q_water_out = water_out_amount * ((cp_steam * (exhaust_t - 100)) + (cp_water *(100 - t_in ) ) + vap_heat)
     Q_dry_pulp_out = dry_pulp_amount * cp_dry_pulp * (dried_pulp_out_t - t_in)
     Q_moisture_out = mass_m_out * cp_water * (dried_pulp_out_t - t_in)
@@ -839,8 +839,10 @@ main(allflows, processunits)
 
 # print(are_units_calced(processunits))
 
-print_flows(allflows)
-
+#print_flows(allflows)
+for unit in processunits:
+    unit.check_heat_balance(allflows)
+    unit.check_mass_balance(allflows)
 
 
 # for unit in processunits:
