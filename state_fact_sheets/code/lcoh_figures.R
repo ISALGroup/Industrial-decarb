@@ -11,7 +11,7 @@ library(ggbeeswarm)
 
 ##### ORGANIZE EXCEL MODEL OUTPUT #######
 # Load data
-lcoh_raw_df <- read_excel("state_fact_sheets/data/raw/lcoh_facility_gsheet.xlsx")
+lcoh_raw_df <- read_excel("state_fact_sheets/data/raw/MN_lcoh_facility.xlsx")
 
 # Reshape to long format
 lcoh_long <- lcoh_raw_df %>%
@@ -33,6 +33,7 @@ lcoh_long <- lcoh_raw_df %>%
       str_detect(scenario_clean, "50_cost_share") ~ "50% Capex\nShare",
       str_detect(scenario_clean, "100_cost_share") ~ "100% Capex\nShare",
       str_detect(scenario_clean, "low_rate") ~ "Low Elec.\nRate",
+      str_detect(scenario_clean, "100_low") ~ "100% Capex + \nLow Rate",
       str_detect(scenario_clean, "no_policy") ~ "No Policy",
       str_detect(scenario_clean, "natural_gas") ~ "Baseline"
     ),
@@ -69,6 +70,13 @@ ng_baseline <- lcoh_long %>%
   group_by(plant_name, industry) %>%
   summarise(NG_LCOH = mean(LCOH), .groups = "drop")
 
+# Define sector colors
+sector_colors <- c(
+  "Paper Mills" = "#6d7d33",
+  "Beet Sugar" = "#047c91",
+  "Ethyl Alcohol" = "#febc11"
+)
+
 
 #### FIGURE: TECHNOLOGIES BY SECTOR (no policy) ####
 # Create lcoh_candle from lcoh_long
@@ -76,7 +84,7 @@ lcoh_tech_candle <- lcoh_long %>%
   filter(policy_label == "No Policy", scenario_label != "Baseline") %>%
   mutate(scenario_label = factor(scenario_label, 
                                  levels = c("Scenario 1", "Scenario 2", "Scenario 3", "Scenario 4"),
-                                 labels = c("E-Boiler", "E-Boiler + EE", "Air-Source HP", "Waste HP + EE"))) %>%
+                                 labels = c("E-Boiler", "E-Boiler + EE", "Air-Source HP", "Air-Source HP + EE"))) %>%
   group_by(industry, scenario_label, case) %>%
   summarise(LCOH = mean(LCOH), .groups = "drop") %>%
   pivot_wider(
@@ -96,13 +104,6 @@ ng_band <- lcoh_long %>%
     ng_min = min(LCOH),
     ng_max = max(LCOH)
   )
-
-# Define sector colors
-sector_colors <- c(
-  "Paper Mills" = "#6d7d33",
-  "Beet Sugar" = "#047c91",
-  "Ethyl Alcohol" = "#febc11"
-)
 
 # Create the candlestick plot
 technology_by_sector_lcoh_plot <- ggplot(lcoh_tech_candle, aes(x = scenario_label, ymin = LCOH_min, ymax = LCOH_max, color = industry_clean)) +
@@ -125,9 +126,11 @@ technology_by_sector_lcoh_plot <- ggplot(lcoh_tech_candle, aes(x = scenario_labe
   annotate("text",
            x = -Inf, y = Inf, 
            label = "LCOH range of a natural gas boiler",
-           hjust = -0.1, vjust = 41,
+           hjust = -0.1, vjust = 46.5,
            size = 3,
            fontface = 'italic') +
+  
+  scale_y_continuous(limits = c(5, 30))  +
   
   geom_linerange(
     aes(group = industry),
@@ -155,19 +158,100 @@ technology_by_sector_lcoh_plot <- ggplot(lcoh_tech_candle, aes(x = scenario_labe
       linewidth = 0.2    
     )
   )
-  # theme(
-  #   text = element_text(size = 30),
-  #   legend.text = element_text(size = 32),
-  #   legend.title = element_text(size = 36),
-  #   plot.title = element_text(size = 42, face = "bold"),
-  #   axis.title = element_text(size = 30),
-  #   axis.text = element_text(size = 38)
-  # )
 
 print(technology_by_sector_lcoh_plot)
 
 # Save
-ggsave("state_fact_sheets/outputs/mn_sector_technology_lcoh2.png", technology_by_sector_lcoh_plot, width = 8, height = 5, dpi = 300)
+ggsave("state_fact_sheets/outputs/mn_sector_technology_lcoh3.png", technology_by_sector_lcoh_plot, width = 8, height = 5, dpi = 300)
+
+
+#### FIGURE: TECHNOLOGIES BY SECTOR W/ POLICY ####
+# Create lcoh_candle from lcoh_long
+lcoh_tech_candle <- lcoh_long %>%
+  filter(scenario_label == "Scenario 4") %>%
+  pivot_wider(
+    names_from = case,
+    values_from = LCOH,
+    names_prefix = "LCOH_"
+  ) %>%
+  rename(
+    LCOH_min = LCOH_best,
+    LCOH_max = LCOH_worst
+  ) %>% 
+  group_by(industry, policy_label) %>%
+  summarise(LCOH_min = min(LCOH_min, na.rm = TRUE),
+            LCOH_max = max(LCOH_max, na.rm = TRUE), 
+            .groups = "drop") %>%
+  mutate(industry_clean = str_replace(industry, " Manufacturing", ""))
+
+ng_band <- lcoh_long %>%
+  filter(scenario_label == "Baseline") %>%
+  summarise(
+    ng_min = min(LCOH),
+    ng_max = max(LCOH)
+  )
+
+policy_order <- c("No Policy", "30% Capex\nShare", "50% Capex\nShare", "100% Capex\nShare", "Low Elec.\nRate", "100% Capex + \nLow Rate")
+
+# Create the candlestick plot
+sector_policy_lcoh_plot <- ggplot(lcoh_tech_candle, aes(x = factor(policy_label, levels = policy_order), ymin = LCOH_min, ymax = LCOH_max, color = industry_clean)) +
+  
+  # Add grey band for natural gas baseline
+  annotate("rect",
+           xmin = -Inf, xmax = Inf,
+           ymin = ng_band$ng_min, ymax = ng_band$ng_max,
+           fill = "grey90", alpha = 0.3) +
+  
+  geom_hline(yintercept = ng_band$ng_min, 
+             linetype = "dotted", 
+             color = "black", 
+             size = 0.5) +
+  geom_hline(yintercept = ng_band$ng_max, 
+             linetype = "dotted", 
+             color = "black", 
+             size = 0.5) +
+  
+  annotate("text",
+           x = -Inf, y = Inf, 
+           label = "LCOH range of a natural gas boiler",
+           hjust = -0.1, vjust = 45,
+           size = 3,
+           fontface = 'italic') +
+  
+  scale_y_continuous(limits = c(5, 30))  +
+  
+  geom_linerange(
+    aes(group = industry),
+    linewidth = 4,
+    position = position_dodge(width = 0.4)
+  ) +
+  
+  scale_color_manual(values = sector_colors) +
+  
+  labs(
+    #title = "LCOH by Sector and Technology Scenario",
+    x = NULL,
+    y = "Levelized Cost of Heat ($/MMBtu)",
+    color = "Sector"
+  ) +
+  
+  theme_bw(base_size = 14) +
+  theme(
+    legend.position = c(0.8, 0.95),
+    legend.justification = c(0, 1),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 11), 
+    legend.background = element_rect(
+      color = "black",   
+      linewidth = 0.2    
+    )
+  )
+
+print(sector_policy_lcoh_plot)
+
+# Save
+#ggsave("state_fact_sheets/outputs/mn_sector_policy_lcoh5.png", sector_policy_lcoh_plot, width = 8, height = 5, dpi = 300)
+
 
 #### FIGURE: LCOH Policy Modeling Scenario 4 ONLY #####
 
@@ -185,7 +269,7 @@ ng_avg <- lcoh_long %>%
   pull(NG_LCOH_avg)
 
 # Define the policy order
-policy_order <- c("No Policy", "30% Capex\nShare", "50% Capex\nShare", "100% Capex\nShare", "Low Elec.\nRate")
+policy_order <- c("No Policy", "30% Capex\nShare", "50% Capex\nShare", "100% Capex\nShare", "Low Elec.\nRate", "100% Capex + \nLow Rate")
 
 # Plot
 policy_lcoh_plot <- ggplot(scenario4_avg, aes(x = factor(policy_label, levels = policy_order), 
@@ -205,6 +289,8 @@ policy_lcoh_plot <- ggplot(scenario4_avg, aes(x = factor(policy_label, levels = 
   
   # Points with jitter to spread facilities slightly for visibility
   geom_jitter(width = 0.2, size = 3, alpha = 0.8) +
+  
+  scale_y_continuous(limits = c(5, 30))  +
   
   scale_color_manual(values = sector_colors) +
   
@@ -229,8 +315,7 @@ policy_lcoh_plot <- ggplot(scenario4_avg, aes(x = factor(policy_label, levels = 
 
 print(policy_lcoh_plot)
 # Save
-ggsave("state_fact_sheets/outputs/mn_sector_policy_lcoh2.png", policy_lcoh_plot, width = 8, height = 5, dpi = 300)
-
+# ggsave("state_fact_sheets/outputs/mn_sector_policy_lcoh3.png", policy_lcoh_plot, width = 8, height = 5, dpi = 300)
 
 
 #### PARITY ANALYSIS ####
@@ -272,10 +357,10 @@ parity_summary <- lcoh_compare %>%
   )
 
 
-writexl::write_xlsx(
-  list(
-    "Facility Parity Detail" = scenarios_by_plant,
-    "Parity Summary" = parity_summary
-  ),
-  path = "state_fact_sheets/data/modified/lcoh_policy_results.xlsx"
-)
+# writexl::write_xlsx(
+#   list(
+#     "Facility Parity Detail" = scenarios_by_plant,
+#     "Parity Summary" = parity_summary
+#   ),
+#   path = "state_fact_sheets/data/modified/lcoh_policy_results.xlsx"
+# )
