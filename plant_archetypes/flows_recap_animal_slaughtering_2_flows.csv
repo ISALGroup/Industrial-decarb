@@ -1,0 +1,50 @@
+name,components,flow_type,temperature,pressure,composition,origin,destination,mass_flow_rate,elec_flow_rate,heat_flow_rate,combustion_energy_content,Set shear,In or out,Set calc
+Live Animal,['Animal'],input,25,1,[1],,Stunner,100000,0,0,0,,,
+Stunned Animal,['Animal'],Process Stream,25,1,[1],Stunner,Exsanguiation,100000,0,0,0,,Out,True
+Blood,['Blood'],Process Stream,25,1,[1],Exsanguiation,Blood Processer,4250.0,0,0,0,,Out,True
+Carcass,['Carcass'],Process Stream,25,1,[1],Exsanguiation,Cleaner,95750.0,0,0,0,,Out,True
+Electricity (Blood Processer),,Electricity,25,1,[1],,Blood Processer,0,637.5,0,0,,In,False
+Blood to Dryer,['Blood'],Process Stream,25,1,[1],Blood Processer,Blood Dryer,4250.0,0,0,0,,Out,True
+Water (Blood Processer),['Water'],Water,25,1,[1],,Blood Processer,3187.5,0,0,0,,In,False
+Waster Water (Blood Processer),['Water'],Waste Water,25,1,[1],Blood Processer,,3187.5,0,0,0,,Out,False
+Steam (Blood Dryer),['Water'],Steam,110,1,[1],,Blood Dryer,3765.0737463126843,0,8509066.666666666,0,,In,False
+Condensate (Blood Dryer),['Water'],Condensate,25,1,[1],Blood Dryer,,3765.0737463126843,0,0,0,,Out,False
+Waste Water (Blood Dryer),['Water'],Waste Water,25,1,[1],Blood Dryer,,2833.333333333333,0,7352160.0,0,,Out,False
+Electricity (Blood Dryer),,Electricity,25,1,[1],,Blood Dryer,0,354.1666666666667,0,0,,In,False
+Feed Suppliment,['Feed'],Product,25,1,[1],Blood Dryer,,1416.6666666666667,0,306000.0,0,,Out,False
+Hot Water (Cleaner),['Water'],Steam,80,1,[1],,Cleaner,63926.4339779214,0,16055763.157894738,0,,In,False
+Waste Water (Cleaner),['Water'],Wastewater,25,1,[1],Cleaner,,63926.4339779214,0,0,0,,Out,False
+Cleaned Carcass,['Meat'],Process Stream,25,1,[1],Cleaner,Evisceration,95750.0,0,15252975.0,0,,Out,True
+Hot Water (Evisceration),['Water'],Steam,82,1,[1],,Evisceration,14511.376888655992,0,3766166.6666666665,0,,In,False
+Waste Water (Evisceration),['Water'],Wastewater,25,1,[1],Evisceration,,14511.376888655992,0,0,0,,Out,False
+Meat,['Meat'],Process Stream,25,1,[1],Evisceration,Trimmer,83781.25,0,16312209.375,0,,Out,True
+Viscera,['Viscera'],Process Stream,25,1,[1],Evisceration,Visceria Proceser,5984.375,0,1165157.8125,0,,Out,True
+Edible Organs,['Organs'],Product,25,1,[1],Evisceration,,5984.375,0,1165157.8125,0,,Out,False
+Electricity (Evisceration),,Electricity,25,1,[1],,Evisceration,0,2010.7500000000002,0,0,,In,False
+Hot Water (Processer),['Water'],Steam,90,1,[1],,Visceria Proceser,347.19259777489594,0,101734.375,0,,In,False
+Waste Water (Processer),['Water'],Wastewater,25,1,[1],Visceria Proceser,,1544.067597774896,0,0,0,,Out,False
+Tripe,['Tripe'],Product,25,1,[1],Visceria Proceser,,4787.5,0,1256718.75,0,,Out,False
+Electricity (Trimmer),,Electricity,25,1,[1],,Trimmer,0,12567.1875,0,0,,In,False
+Boneless Meat,['Meat'],Process Stream,25,1,[1],Trimmer,Chiller,69119.53125,0,16312209.375,0,,Out,True
+Trim,['Meat'],Process Stream,25,1,[1],Trimmer,Edible Renderer,14661.718749999998,0,0,0,,Out,True
+Electricity (Chiller),,Electricity,25,1,[1],,Chiller,0,15551.89453125,0,0,,In,False
+Boneless Chilled Meat,['Meat'],Process Stream,25,1,[1],Chiller,Cutter,51839.6484375,0,0,0,,Out,True
+Raw Meat,['Meat'],Product,25,1,[1],Chiller,,17279.8828125,0,0,0,,Out,False
+Electricity (Cutter),,Electricity,25,1,[1],,Cutter,0,7775.947265625,0,0,,In,False
+Inedible Product,['Meat'],Process Stream,25,1,[1],Cutter,Inedible Renderer,7775.947265625,0,0,0,,Out,True
+Edible Product,['Meat'],Process Stream,25,1,[1],Cutter,Edible Renderer,33695.771484375,0,0,0,,Out,True
+Smoking Product,['Meat'],Process Stream,25,1,[1],Cutter,Smoker,10367.9296875,0,0,0,,Out,True
+Steam (Inedible Rendering),['Water'],Steam,120.0,1,[1],,Inedible Renderer,516.1026946211283,0,1166392.08984375,0,,In,False
+Condensate (Inedible Rendering),['Water'],Condensate,25,1,[1],Inedible Renderer,,516.1026946211283,0,0,0,,Out,False
+Electricity (Indeble Rendering),,Electricity,25,1,[1],,Inedible Renderer,0,1166.39208984375,0,0,,In,False
+Protein Meal,['Tallow'],Product,25,1,[1],Inedible Renderer,,2073.5859375,0,0,0,,Out,False
+Waste (Inedible Rendering),['Waste'],Waste,25,1,[1],Inedible Renderer,,5702.361328125,0,1166392.08984375,0,,Out,False
+Steam (Smoker),['Water'],Steam,115,1,[1],,Smoker,4587.579507743363,0,10367929.6875,0,,In,False
+Condensate (Smoker),['Water'],Condensate,25,1,[1],Smoker,,4587.579507743363,0,0,0,,Out,False
+Electricity (Smoker),,Electricity,25,1,[1],,Smoker,0,2851.1806640625005,0,0,,In,False
+Smoked Meat,['Meat'],Product,25,1,[1],Smoker,,10367.9296875,0,10367929.6875,0,,Out,False
+Steam (Edible Rendering),['Water'],Steam,120.0,1,[1],,Edible Renderer,3209.5679359098453,0,7253623.53515625,0,,In,False
+Condensate (Edible Rendering),['Water'],Condensate,25,1,[1],Edible Renderer,,3209.5679359098453,0,0,0,,Out,False
+Electricity (Edible Rendering),,Electricity,25,1,[1],,Edible Renderer,0,0.125,0,0,,In,False
+Lard,['Lard'],Product,25,1,[1],Edible Renderer,,16119.163411458332,0,0,0,,Out,False
+Waste (Edible Rendering),['Waste'],Waste,25,1,[1],Edible Renderer,,32238.326822916668,0,7253623.53515625,0,,Out,False

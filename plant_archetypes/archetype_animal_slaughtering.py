@@ -118,7 +118,7 @@ def Blood_dryer_func(blood_flow, coeff):
     Q_loss = Q_steam * coeff['loses']
     print('Blood Dryer')
     return[{'name' : 'Steam (Blood Dryer)', 'components' : ['Water'], 'composition' : [1], 'mass_flow_rate': m_steam,
-             'flow_type': 'Steam', 'Temperature': coeff['Steam Temp'], 'In or out' : 'In', 'Set calc' : False, 'heat_flow_rate': Q_steam},
+             'flow_type': 'Steam', 'temperature': coeff['Steam Temp'], 'In or out' : 'In', 'Set calc' : False, 'heat_flow_rate': Q_steam},
            {'name' : 'Condensate (Blood Dryer)', 'components' : ['Water'], 'composition' : [1], 'mass_flow_rate': m_steam,
              'flow_type': 'Condensate', 'In or out' : 'Out', 'Set calc' : False, 'heat_flow_rate': 0},
            {'Heat loss': Q_loss},
@@ -147,7 +147,7 @@ def Cleaner_func(carcass_flow, coeff):
     Q_loss = Q_hotwater * coeff['loses']
     print('Cleaner')
     return[{'name' : 'Hot Water (Cleaner)', 'components' : ['Water'], 'composition' : [1], 'mass_flow_rate': m_hotwater,
-             'flow_type': 'Steam', 'Temperature': coeff['Steam Temp'], 'In or out' : 'In', 'Set calc' : False, 'heat_flow_rate': Q_hotwater},
+             'flow_type': 'Steam', 'temperature': coeff['Steam Temp'], 'In or out' : 'In', 'Set calc' : False, 'heat_flow_rate': Q_hotwater},
            {'name' : 'Waste Water (Cleaner)', 'components' : ['Water'], 'composition' : [1], 'mass_flow_rate': m_hotwater,
              'flow_type': 'Wastewater', 'In or out' : 'Out', 'Set calc' : False, 'heat_flow_rate': 0},
            {'Heat loss': Q_loss},
@@ -182,7 +182,7 @@ def Evisceration_func(cleaned_carcass_flow, coeff):
     print('Evisceration')
 
     return[{'name' : 'Hot Water (Evisceration)', 'components' : ['Water'], 'composition' : [1], 'mass_flow_rate': m_hotwater,
-             'flow_type': 'Steam', 'Temperature': coeff['Steam Temp'], 'In or out' : 'In', 'Set calc' : False, 'heat_flow_rate': Q_hotwater},
+             'flow_type': 'Steam', 'temperature': coeff['Steam Temp'], 'In or out' : 'In', 'Set calc' : False, 'heat_flow_rate': Q_hotwater},
            {'name' : 'Waste Water (Evisceration)', 'components' : ['Water'], 'composition' : [1], 'mass_flow_rate': m_hotwater,
              'flow_type': 'Wastewater', 'In or out' : 'Out', 'Set calc' : False, 'heat_flow_rate': 0},
            {'Heat loss': Q_loss},
@@ -216,7 +216,7 @@ def Viscera_processing_func(viscera_flow, coeff):
     wastewater_out = waste_out + m_hotwater
     print('Processer')
     return[{'name' : 'Hot Water (Processer)', 'components' : ['Water'], 'composition' : [1], 'mass_flow_rate': m_hotwater,
-             'flow_type': 'Steam', 'Temperature': coeff['Steam Temp'], 'In or out' : 'In', 'Set calc' : False, 'heat_flow_rate': Q_hotwater},
+             'flow_type': 'Steam', 'temperature': coeff['Steam Temp'], 'In or out' : 'In', 'Set calc' : False, 'heat_flow_rate': Q_hotwater},
            {'name' : 'Waste Water (Processer)', 'components' : ['Water'], 'composition' : [1], 'mass_flow_rate': wastewater_out,
              'flow_type': 'Wastewater', 'In or out' : 'Out', 'Set calc' : False, 'heat_flow_rate': 0},
            {'Heat loss': Q_loss},
@@ -315,7 +315,7 @@ def Inedible_rendering_func(product_flow, coeff):
     m_steam = Q_steam / Hvap
     print('Indedible Rendering')
     return[{'name' : 'Steam (Inedible Rendering)', 'components' : ['Water'], 'composition' : [1], 'mass_flow_rate': m_steam,
-             'flow_type': 'Steam', 'Temperature': coeff['Steam Temp'], 'In or out' : 'In', 'Set calc' : False, 'heat_flow_rate': Q_steam},
+             'flow_type': 'Steam', 'temperature': coeff['Steam Temp'], 'In or out' : 'In', 'Set calc' : False, 'heat_flow_rate': Q_steam},
            {'name' : 'Condensate (Inedible Rendering)', 'components' : ['Water'], 'composition' : [1], 'mass_flow_rate': m_steam,
              'flow_type': 'Condensate', 'In or out' : 'Out', 'Set calc' : False, 'heat_flow_rate': 0},
            {'name' : 'Electricity (Indeble Rendering)', 'mass_flow_rate' : 0,
@@ -341,7 +341,7 @@ def Smoker_func(product_flow, coeff):
     electricity_in = coeff['Electricity (kw/kg)'] * product_in
     print('Smoker')
     return[{'name' : 'Steam (Smoker)', 'components' : ['Water'], 'composition' : [1], 'mass_flow_rate': m_steam,
-             'flow_type': 'Steam', 'Temperature': coeff['Steam Temp'], 'In or out' : 'In', 'Set calc' : False, 'heat_flow_rate': Q_steam},
+             'flow_type': 'Steam', 'temperature': coeff['Steam Temp'], 'In or out' : 'In', 'Set calc' : False, 'heat_flow_rate': Q_steam},
            {'name' : 'Condensate (Smoker)', 'components' : ['Water'], 'composition' : [1], 'mass_flow_rate': m_steam,
              'flow_type': 'Condensate', 'In or out' : 'Out', 'Set calc' : False, 'heat_flow_rate': 0},
            {'name' : 'Electricity (Smoker)', 'mass_flow_rate' : 0,
@@ -372,7 +372,7 @@ def Edible_rendering_func(ablist, coeff):
     waste_out = input_flows - lard_out
     print('Edible Rendering')
     return[{'name' : 'Steam (Edible Rendering)', 'components' : ['Water'], 'composition' : [1], 'mass_flow_rate': m_steam,
-             'flow_type': 'Steam', 'Temperature': coeff['Steam Temp'], 'In or out' : 'In', 'Set calc' : False, 'heat_flow_rate': Q_steam},
+             'flow_type': 'Steam', 'temperature': coeff['Steam Temp'], 'In or out' : 'In', 'Set calc' : False, 'heat_flow_rate': Q_steam},
            {'name' : 'Condensate (Edible Rendering)', 'components' : ['Water'], 'composition' : [1], 'mass_flow_rate': m_steam,
              'flow_type': 'Condensate', 'In or out' : 'Out', 'Set calc' : False, 'heat_flow_rate': 0},
            {'name' : 'Electricity (Edible Rendering)', 'mass_flow_rate' : 0,
@@ -394,7 +394,7 @@ for unit in processunits:
     unit.check_mass_balance(allflows)
 
 utilities_recap('utility_recap_animal_slaughtering_2', allflows, processunits)
-
+unit_recap_to_file('units_recap_animal_slaughtering_2', allflows, processunits)
 for flow in allflows:
     if flow.attributes['flow_type'] == 'Product':
         print(flow)

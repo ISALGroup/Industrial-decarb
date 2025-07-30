@@ -1,0 +1,137 @@
+Stunner
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Live Animal,25,100000,0,0
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Stunned Animal,25,100000,0,0
+Exsanguiation
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Stunned Animal,25,100000,0,0
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Blood,25,4250.0,0,0
+Carcass,25,95750.0,0,0
+Blood Processer
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Blood,25,4250.0,0,0
+Electricity (Blood Processer),25,0,0,637.5
+Water (Blood Processer),25,3187.5,0,0
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Blood to Dryer,25,4250.0,0,0
+Waster Water (Blood Processer),25,3187.5,0,0
+Blood Dryer
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Blood to Dryer,25,4250.0,0,0
+Steam (Blood Dryer),110,3765.0737463126843,8509066.666666666,0
+Electricity (Blood Dryer),25,0,0,354.1666666666667
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Condensate (Blood Dryer),25,3765.0737463126843,0,0
+Waste Water (Blood Dryer),25,2833.333333333333,7352160.0,0
+Feed Suppliment,25,1416.6666666666667,306000.0,0
+Losses,Heat loss
+,850906.6666666666
+Cleaner
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Carcass,25,95750.0,0,0
+Hot Water (Cleaner),80,63926.4339779214,16055763.157894738,0
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Waste Water (Cleaner),25,63926.4339779214,0,0
+Cleaned Carcass,25,95750.0,15252975.0,0
+Losses,Heat loss
+,802788.157894737
+Evisceration
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Cleaned Carcass,25,95750.0,15252975.0,0
+Hot Water (Evisceration),82,14511.376888655992,3766166.6666666665,0
+Electricity (Evisceration),25,0,0,2010.7500000000002
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Waste Water (Evisceration),25,14511.376888655992,0,0
+Meat,25,83781.25,16312209.375,0
+Viscera,25,5984.375,1165157.8125,0
+Edible Organs,25,5984.375,1165157.8125,0
+Losses,Heat loss
+,376616.6666666667
+Visceria Proceser
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Viscera,25,5984.375,1165157.8125,0
+Hot Water (Processer),90,347.19259777489594,101734.375,0
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Waste Water (Processer),25,1544.067597774896,0,0
+Tripe,25,4787.5,1256718.75,0
+Losses,Heat loss
+,10173.4375
+Trimmer
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Meat,25,83781.25,16312209.375,0
+Electricity (Trimmer),25,0,0,12567.1875
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Boneless Meat,25,69119.53125,16312209.375,0
+Trim,25,14661.718749999998,0,0
+Chiller
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Boneless Meat,25,69119.53125,16312209.375,0
+Electricity (Chiller),25,0,0,15551.89453125
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Boneless Chilled Meat,25,51839.6484375,0,0
+Raw Meat,25,17279.8828125,0,0
+Losses,Heat loss
+,16312209.375
+Cutter
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Boneless Chilled Meat,25,51839.6484375,0,0
+Electricity (Cutter),25,0,0,7775.947265625
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Inedible Product,25,7775.947265625,0,0
+Edible Product,25,33695.771484375,0,0
+Smoking Product,25,10367.9296875,0,0
+Inedible Renderer
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Inedible Product,25,7775.947265625,0,0
+Steam (Inedible Rendering),120.0,516.1026946211283,1166392.08984375,0
+Electricity (Indeble Rendering),25,0,0,1166.39208984375
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Condensate (Inedible Rendering),25,516.1026946211283,0,0
+Protein Meal,25,2073.5859375,0,0
+Waste (Inedible Rendering),25,5702.361328125,1166392.08984375,0
+Smoker
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Smoking Product,25,10367.9296875,0,0
+Steam (Smoker),115,4587.579507743363,10367929.6875,0
+Electricity (Smoker),25,0,0,2851.1806640625005
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Condensate (Smoker),25,4587.579507743363,0,0
+Smoked Meat,25,10367.9296875,10367929.6875,0
+Edible Renderer
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Trim,25,14661.718749999998,0,0
+Edible Product,25,33695.771484375,0,0
+Steam (Edible Rendering),120.0,3209.5679359098453,7253623.53515625,0
+Electricity (Edible Rendering),25,0,0,0.125
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Condensate (Edible Rendering),25,3209.5679359098453,0,0
+Lard,25,16119.163411458332,0,0
+Waste (Edible Rendering),25,32238.326822916668,7253623.53515625,0
