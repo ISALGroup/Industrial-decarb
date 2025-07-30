@@ -1,0 +1,14 @@
+Unit name,Heat demand (Steam kJ),Heat demand (Fuel kJ),Electricity demand (kWh),Heat produced (kJ),Fuel produced (kJ),Electricity produced (kWh),Waste heat (kJ),Compressed air demand (kg),Compressed air produced (kg)
+Stunner,0,0,0,0,0,0,0,0,0
+Exsanguiation,0,0,0,0,0,0,0,0,0
+Blood Processer,0,0,637.5,0,0,0,0,0,0
+Blood Dryer,8509066.666666666,0,354.1666666666667,0,0,0,0,0,0
+Cleaner,16055763.157894738,0,0,0,0,0,0,0,0
+Evisceration,3766166.6666666665,0,2010.7500000000002,0,0,0,0,0,0
+Visceria Proceser,101734.375,0,0,0,0,0,0,0,0
+Trimmer,0,0,12567.1875,0,0,0,0,0,0
+Chiller,0,0,15551.89453125,0,0,0,0,0,0
+Cutter,0,0,7775.947265625,0,0,0,0,0,0
+Inedible Renderer,1166392.08984375,0,1166.39208984375,0,0,0,1166392.08984375,0,0
+Smoker,10367929.6875,0,2851.1806640625005,0,0,0,0,0,0
+Edible Renderer,7253623.53515625,0,0.125,0,0,0,7253623.53515625,0,0
