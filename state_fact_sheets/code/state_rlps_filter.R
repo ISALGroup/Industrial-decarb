@@ -15,7 +15,7 @@ target_naics_df <- read_excel("state_fact_sheets/data/raw/target_NAICS.xlsx") %>
 ghgrp_df_raw <- read_excel("state_fact_sheets/data/raw/rlps_ghg_emitter_subpart_w_NAICS.xlsx") 
 
 ghgrp_state_raw <- ghgrp_df_raw %>%
-  filter(state == "IL", year == 2023) %>% 
+  filter(state == "MN", year == 2023) %>% 
   rename(naics_code = primary_naics)
 
 ghgrp_state_mod <- ghgrp_state_raw %>% 
