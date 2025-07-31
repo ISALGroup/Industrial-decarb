@@ -89,15 +89,6 @@ combined_lcoh_df <- bind_rows(no_policy_df, policy_scenarios_df)  %>%
     levels = c("Paper Mills", "Beet Sugar Manufacturing", "Ethyl Alcohol Manufacturing")
   ))
 
-scenario4_df <- combined_lcoh_df %>%
-  filter(tech_scenario %in% c("scenario_4_best", "scenario_4_worst")) %>% 
-  mutate(
-    capex_level = str_extract(policy_label, "Capex: \\d+%"),
-    elec_level = str_extract(policy_label, "Elec: -\\d+%"),
-    policy_label = paste0(capex_level, "<br>", elec_level),
-    policy_label = factor(policy_label, levels = unique(policy_label))  # reorder as needed
-  )
-
 
 # PLOTTING #revenge
 # Define your custom sector colors
@@ -125,10 +116,6 @@ lcoh_policy_combined_plot <- ggplot(scenario4_df, aes(x = policy_label, y = lcoh
     legend.position = "bottom"
   )
 
-ggplot(scenario4_df, aes(x = policy_label, y = lcoh, fill = naics_description)) +
-  geom_col(position = position_dodge2(preserve = "single"), width = 0.8) +
-  theme_minimal() +
-  theme(axis.text.x = ggtext::element_markdown(angle = 0, hjust = 0.5))
 
 # save
 ggsave("state_fact_sheets/outputs/mn_combined_policy_lcoh.png", lcoh_policy_combined_plot, width = 8, height = 6, dpi = 300)

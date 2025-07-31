@@ -23,21 +23,17 @@ sector_colors <- c(
   "Other Manufacturing" = "#DCE1E5"
 ) #was highlight_colors
 
-mn_target_naics <- c("311942", "325193", "311313", "322120")
-
 subsector_colors <- c("311221" = "#6D7D33", 
                       "325193" = "#FEBC11", 
                       "311313" = "#6D7D33", 
                       "322120" = "#047C91",
-                      "311942" = "#047C91",
+                      "311942" = "#6D7D33",
                       "311224" = "#6D7D33",
                       "325110" = "#FEBC11", 
                       "325311" = "#FEBC11", 
                       "312140" = "#6D7D33", 
                       "311611" = "#6D7D33", 
                       "311225" = "#6D7D33")
-
-mn_highlight_naics <- c("311942","325193", "322120", "311313") # these are the NAICS codes that should get labels in the chart
 
 # Load NAICS description data
 target_naics <- read_excel(here("state_fact_sheets/data/raw/target_NAICS.xlsx")) %>%
