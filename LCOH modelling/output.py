@@ -356,10 +356,77 @@ facility_aggreg['scenario4_low_LCOH'] = facility_aggreg.apply(scen4_low_row_lcoh
 
 
 
+new_df = facility_aggreg
+new_df['baseline_capex'] = 0
+new_df['baseline_change_in_electricity_demand'] = 0
+new_df['baseline_LCOH'] = None
+new_df.rename(columns = {'agg_ghg_emissions' : 'baseline_ghg_emissions', 'agg_fuel_cost' : 'baseline_opex',
+                         'eboiler_low_capex': 'scenario1best_capex', 'eboiler_high_capex' : 'scenario1worst_capex',
+                         'scenario1_LCOH_low' : 'scenario1best_LCOH', 'scenario1_LCOH_high' : 'scenario1worst_LCOH',
+                         'agg_electrifiable_process_heat_kwh' : 'scenario1worst_change_in_electricity_demand',
+                         'scenario2_high_electricity_consumption' : 'scenario2worst_change_in_electricity_demand',
+                         'scenario2_high_opex' : 'scenario2worst_opex', 'scenario2_high_emissions': 'scenario2worst_ghg_emissions',
+                         'scenario2_low_electricity_consumption' : 'scenario2best_change_in_electricity_demand',
+                         'scenario2_low_opex' : 'scenario2best_opex', 'scenario2_low_emissions': 'scenario2best_ghg_emissions'
+                         
+                         
+                         }, inplace = True )
 
 
+new_df['scenario1best_opex'] = new_df['eboiler_opex']
+new_df['scenario1worst_opex'] = new_df['eboiler_opex']
+
+new_df['scenario1best_ghg_emissions'] = new_df['eboiler_emissions']
+new_df['scenario1worst_ghg_emissions'] = new_df['eboiler_emissions']
+
+new_df['scenario1best_change_in_electricity_demand'] = new_df['scenario1worst_change_in_electricity_demand']
+
+new_df['scenario2best_capex'] = new_df['scenario2_low_capex']
+new_df['scenario2worst_capex'] = new_df['scenario2_high_capex']
+
+new_df['scenario2best_LCOH'] = new_df['scenario2_low_LCOH']
+new_df['scenario2worst_LCOH'] = new_df['scenario2_high_LCOH']
+
+selected_columns = ['facility_id', 'primary_naics', 'facility_name', 'state', 'baseline_capex', 'baseline_change_in_electricity_demand', 'scenario1best_change_in_electricity_demand',
+                    'baseline_LCOH', 'baseline_ghg_emissions', 'baseline_opex', 'scenario1best_capex', 'scenario1worst_capex', 'scenario1best_LCOH', 'scenario1worst_LCOH',
+                    'scenario1worst_change_in_electricity_demand', 'scenario2worst_change_in_electricity_demand', 'scenario2worst_opex',
+                    'scenario2worst_ghg_emissions', 'scenario2best_change_in_electricity_demand', 'scenario2best_opex', 'scenario2best_ghg_emissions',
+                    'scenario2best_capex', 'scenario2worst_capex', 'scenario2best_LCOH', 'scenario2worst_LCOH', 'scenario1best_opex',
+                    'scenario1worst_opex', 'scenario1best_ghg_emissions', 'scenario1worst_ghg_emissions'
+                    ]
+
+long_form_df = new_df[selected_columns].copy()
+
+columns_of_interest = ['facility_id', 'facility_name', 'state']
+scenarios = {
+    'Baseline': [col for col in long_form_df.columns if col.startswith('baseline_')],
+    'Scenario1Best': [col for col in long_form_df.columns if col.startswith('scenario1best_')],
+    'Scenario1Worst': [col for col in long_form_df.columns if col.startswith('scenario1worst_')],
+    'Scenario2Best': [col for col in long_form_df.columns if col.startswith('scenario2best_')],
+    'Scenario2Worst': [col for col in long_form_df.columns if col.startswith('scenario2worst_')]
+}
+
+df_scenarios = {scenario: long_form_df[columns_of_interest].copy() for scenario in scenarios}
+
+# Ajouter les valeurs des colonnes spécifiques à chaque scénario
+for scenario, cols in scenarios.items():
+    for col in cols:
+        variable = col.split('_', 1)[1]  # Extraire le nom de la variable
+        df_scenarios[scenario][variable] = long_form_df[col]
+
+# Ajouter une colonne 'Scenario' à chaque DataFrame pour identifier le scénario
+for scenario in df_scenarios:
+    df_scenarios[scenario]['Scenario'] = scenario
+
+# Combiner tous les DataFrames en un seul
+df_combined = pd.concat(df_scenarios, ignore_index=True)
+
+# Sélectionner et réorganiser les colonnes finales
+final_columns = ['facility_id', 'facility_name', 'state', 'Scenario', 'capex', 'opex', 'LCOH', 'ghg_emissions', 'change_in_electricity_demand']
+df_final = df_combined[final_columns]
 
 
+df_final.to_excel('longform.xlsx')
 
 
 
