@@ -279,8 +279,9 @@ energy_savings = 0.1
 capex_per_mmbtu = 0
 
 facility_aggreg['savings_fuel_energy'] = facility_aggreg['agg_fuel_energy']*(1-energy_savings)
-facility_aggreg['savings_electrifiable_fuel_energy'] = facility_aggreg['agg_electrifiable_emissions']*(1-energy_savings)
+facility_aggreg['savings_electrifiable_fuel_energy'] = facility_aggreg['agg_electrifiable_energy']*(1-energy_savings)
 facility_aggreg['savings_ghg_quantity'] = facility_aggreg['agg_ghg_emissions']*(1-energy_savings)
+facility_aggreg['savings_electrifiable_ghg_quantity'] = facility_aggreg['agg_electrifiable_emissions']*(1-energy_savings)
 facility_aggreg['savings_fuel_cost'] = facility_aggreg['agg_fuel_cost']*(1-energy_savings)
 facility_aggreg['savings_electrifiable_fuel_cost'] = facility_aggreg['agg_electrifiable_fuel_cost']*(1-energy_savings)
 facility_aggreg['savings_electrifiable_process_heat'] = facility_aggreg['agg_electrifiable_process_heat']*(1-energy_savings) 
@@ -307,7 +308,9 @@ def savings_high_row_lcoh(row):
         return LCOH(row['savings_eboiler_high_capex'], row['savings_eboiler_opex'], discount_rate, row['agg_electrifiable_process_heat'], equipment_lifetime)
 
 
-facility_aggreg['eboiler_emissions'] = facility_aggreg['savings_electrifiable_process_heat_kwh']*grid_ef/1000.
+facility_aggreg['savings_electrifiable_ghg_quantity'] = facility_aggreg['savings_electrifiable_process_heat_kwh']*grid_ef/1000.
+facility_aggreg['scenario3_emissions'] = facility_aggreg['savings_ghg_quantity'] - facility_aggreg['savings_electrifiable_ghg_quantity'] + facility_aggreg['savings_electrifiable_ghg_quantity']
+
 facility_aggreg['scenario3_LCOH_low'] = facility_aggreg.apply(savings_low_row_lcoh, axis= 1)
 
 facility_aggreg['scenario3_LCOH_high'] = facility_aggreg.apply(savings_high_row_lcoh, axis= 1)
@@ -387,12 +390,54 @@ new_df['scenario2worst_capex'] = new_df['scenario2_high_capex']
 new_df['scenario2best_LCOH'] = new_df['scenario2_low_LCOH']
 new_df['scenario2worst_LCOH'] = new_df['scenario2_high_LCOH']
 
+
+
+new_df['scenario3best_opex'] = new_df['savings_eboiler_opex'] 
+new_df['scenario3worst_opex'] = new_df['savings_eboiler_opex'] 
+
+new_df['scenario3best_ghg_emissions'] = new_df['scenario3_emissions']
+new_df['scenario3worst_ghg_emissions'] = new_df['scenario3_emissions']
+
+new_df['scenario3best_change_in_electricity_demand'] = new_df['savings_electrifiable_process_heat_kwh']
+new_df['scenario3worst_change_in_electricity_demand'] = new_df['savings_electrifiable_process_heat_kwh']
+
+new_df['scenario3best_capex'] = new_df['savings_eboiler_low_capex']
+new_df['scenario3worst_capex'] = new_df['savings_eboiler_high_capex']
+
+new_df['scenario3best_LCOH'] = new_df['scenario3_LCOH_low']
+new_df['scenario3worst_LCOH'] = new_df['scenario3_LCOH_high']
+
+
+
+
+new_df['scenario4best_opex'] = new_df['scenario4_low_opex']
+new_df['scenario4worst_opex'] = new_df['scenario4_high_opex']
+
+new_df['scenario4best_ghg_emissions'] = new_df['scenario4_low_emissions']
+new_df['scenario4worst_ghg_emissions'] = new_df['scenario4_high_emissions']
+
+new_df['scenario4best_change_in_electricity_demand'] = new_df['scenario4_low_electricity_consumption']
+new_df['scenario4worst_change_in_electricity_demand'] = new_df['scenario4_high_electricity_consumption']
+
+new_df['scenario4best_capex'] = new_df['scenario4_low_capex']
+new_df['scenario4worst_capex'] = new_df['scenario4_high_capex']
+
+new_df['scenario4best_LCOH'] = new_df['scenario4_low_LCOH']
+new_df['scenario4worst_LCOH'] = new_df['scenario4_high_LCOH']
+
+
+
+
 selected_columns = ['facility_id', 'primary_naics', 'facility_name', 'state', 'baseline_capex', 'baseline_change_in_electricity_demand', 'scenario1best_change_in_electricity_demand',
                     'baseline_LCOH', 'baseline_ghg_emissions', 'baseline_opex', 'scenario1best_capex', 'scenario1worst_capex', 'scenario1best_LCOH', 'scenario1worst_LCOH',
                     'scenario1worst_change_in_electricity_demand', 'scenario2worst_change_in_electricity_demand', 'scenario2worst_opex',
                     'scenario2worst_ghg_emissions', 'scenario2best_change_in_electricity_demand', 'scenario2best_opex', 'scenario2best_ghg_emissions',
                     'scenario2best_capex', 'scenario2worst_capex', 'scenario2best_LCOH', 'scenario2worst_LCOH', 'scenario1best_opex',
-                    'scenario1worst_opex', 'scenario1best_ghg_emissions', 'scenario1worst_ghg_emissions'
+                    'scenario1worst_opex', 'scenario1best_ghg_emissions', 'scenario1worst_ghg_emissions', 'scenario3best_opex', 'scenario3worst_opex',
+                    'scenario3best_ghg_emissions', 'scenario3worst_ghg_emissions', 'scenario3best_change_in_electricity_demand', 'scenario3worst_change_in_electricity_demand',
+                    'scenario3best_capex', 'scenario3worst_capex', 'scenario3best_LCOH', 'scenario3worst_LCOH', 'scenario4best_opex', 'scenario4worst_opex', 
+                    'scenario4best_ghg_emissions', 'scenario4worst_ghg_emissions', 'scenario4best_change_in_electricity_demand', 'scenario4worst_change_in_electricity_demand',
+                    'scenario4best_capex', 'scenario4worst_capex', 'scenario4best_LCOH', 'scenario4worst_LCOH'
                     ]
 
 long_form_df = new_df[selected_columns].copy()
@@ -403,7 +448,11 @@ scenarios = {
     'Scenario1Best': [col for col in long_form_df.columns if col.startswith('scenario1best_')],
     'Scenario1Worst': [col for col in long_form_df.columns if col.startswith('scenario1worst_')],
     'Scenario2Best': [col for col in long_form_df.columns if col.startswith('scenario2best_')],
-    'Scenario2Worst': [col for col in long_form_df.columns if col.startswith('scenario2worst_')]
+    'Scenario2Worst': [col for col in long_form_df.columns if col.startswith('scenario2worst_')],
+    'Scenario3Best': [col for col in long_form_df.columns if col.startswith('scenario3best_')],
+    'Scenario3Worst': [col for col in long_form_df.columns if col.startswith('scenario3worst_')],
+    'Scenario4Best': [col for col in long_form_df.columns if col.startswith('scenario4best_')],
+    'Scenario4Worst': [col for col in long_form_df.columns if col.startswith('scenario4worst_')],
 }
 
 df_scenarios = {scenario: long_form_df[columns_of_interest].copy() for scenario in scenarios}
