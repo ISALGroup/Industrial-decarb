@@ -390,8 +390,29 @@ new_df['scenario3worst_heat_mmbtu'] = new_df['agg_electrifiable_process_heat']
 new_df['scenario4best_heat_mmbtu'] = new_df['agg_electrifiable_process_heat']
 new_df['scenario4worst_heat_mmbtu'] = new_df['agg_electrifiable_process_heat']
 
-new_df['scenario1best_ghg_emissions'] = new_df['baseline_ghg_emissions'] - new_df['agg_electrifiable_emissions'] + new_df['eboiler_emissions']
-new_df['scenario1worst_ghg_emissions'] = new_df['baseline_ghg_emissions'] - new_df['agg_electrifiable_emissions'] + new_df['eboiler_emissions']
+new_df['baseline_noelec_ghg_emissions'] = new_df['baseline_ghg_emissions'] - new_df['agg_electrifiable_emissions']
+new_df['baseline_elec_ghg_emissions'] = new_df['agg_electrifiable_emissions'] 
+
+new_df['scenario1best_noelec_ghg_emissions'] = new_df['baseline_ghg_emissions'] - new_df['agg_electrifiable_emissions'] 
+new_df['scenario1worst_noelec_ghg_emissions'] = new_df['baseline_ghg_emissions'] - new_df['agg_electrifiable_emissions']
+new_df['scenario1best_elec_ghg_emissions'] = new_df['agg_electrifiable_emissions'] 
+new_df['scenario1worst_elec_ghg_emissions'] = new_df['agg_electrifiable_emissions']
+
+new_df['scenario2best_noelec_ghg_emissions'] = new_df['baseline_ghg_emissions'] - new_df['agg_electrifiable_emissions'] 
+new_df['scenario2worst_noelec_ghg_emissions'] = new_df['baseline_ghg_emissions'] - new_df['agg_electrifiable_emissions']
+new_df['scenario2best_elec_ghg_emissions'] = new_df['agg_electrifiable_emissions'] 
+new_df['scenario2worst_elec_ghg_emissions'] = new_df['agg_electrifiable_emissions']
+
+new_df['scenario3best_noelec_ghg_emissions'] = new_df['baseline_ghg_emissions'] - new_df['agg_electrifiable_emissions'] 
+new_df['scenario3worst_noelec_ghg_emissions'] = new_df['baseline_ghg_emissions'] - new_df['agg_electrifiable_emissions']
+new_df['scenario3best_elec_ghg_emissions'] = new_df['agg_electrifiable_emissions'] 
+new_df['scenario3worst_elec_ghg_emissions'] = new_df['agg_electrifiable_emissions']
+
+new_df['scenario4best_noelec_ghg_emissions'] = new_df['baseline_ghg_emissions'] - new_df['agg_electrifiable_emissions'] 
+new_df['scenario4worst_noelec_ghg_emissions'] = new_df['baseline_ghg_emissions'] - new_df['agg_electrifiable_emissions']
+new_df['scenario4best_elec_ghg_emissions'] = new_df['agg_electrifiable_emissions'] 
+new_df['scenario4worst_elec_ghg_emissions'] = new_df['agg_electrifiable_emissions']
+
 
 new_df['scenario1best_change_in_electricity_demand_kwh'] = new_df['scenario1worst_change_in_electricity_demand_kwh']
 
@@ -440,15 +461,19 @@ new_df['scenario4worst_LCOH'] = new_df['scenario4_high_LCOH']
 
 
 selected_columns = ['facility_id', 'primary_naics', 'facility_name', 'state', 'baseline_capex', 'baseline_change_in_electricity_demand_kwh', 'scenario1best_change_in_electricity_demand_kwh',
-                    'baseline_ghg_emissions', 'baseline_opex', 'scenario1best_capex', 'scenario1worst_capex','scenario1worst_change_in_electricity_demand_kwh', 'scenario2worst_change_in_electricity_demand_kwh', 'scenario2worst_opex',
-                    'scenario2worst_ghg_emissions', 'scenario2best_change_in_electricity_demand_kwh', 'scenario2best_opex', 'scenario2best_ghg_emissions',
+                    'baseline_opex', 'scenario1best_capex', 'scenario1worst_capex','scenario1worst_change_in_electricity_demand_kwh', 'scenario2worst_change_in_electricity_demand_kwh', 'scenario2worst_opex',
+                    'scenario2best_change_in_electricity_demand_kwh', 'scenario2best_opex',
                     'scenario2best_capex', 'scenario2worst_capex', 'scenario1best_opex', 'scenario1best_heat_mmbtu', 'scenario1worst_heat_mmbtu','scenario2best_heat_mmbtu', 'scenario2worst_heat_mmbtu',
-                    'scenario1worst_opex', 'scenario1best_ghg_emissions', 'scenario1worst_ghg_emissions', 'scenario3best_opex', 'scenario3worst_opex',
-                    'scenario3best_ghg_emissions', 'scenario3worst_ghg_emissions', 'scenario3best_change_in_electricity_demand_kwh', 'scenario3worst_change_in_electricity_demand_kwh',
+                    'scenario1worst_opex', 'scenario3best_opex', 'scenario3worst_opex',
+                    'scenario3best_change_in_electricity_demand_kwh', 'scenario3worst_change_in_electricity_demand_kwh',
                     'scenario3best_capex', 'scenario3worst_capex', 'scenario4best_opex', 'scenario4worst_opex', 
-                    'scenario4best_ghg_emissions', 'scenario4worst_ghg_emissions', 'scenario4best_change_in_electricity_demand_kwh', 'scenario4worst_change_in_electricity_demand_kwh',
+                    'scenario4best_change_in_electricity_demand_kwh', 'scenario4worst_change_in_electricity_demand_kwh',
                     'scenario3best_heat_mmbtu', 'scenario3worst_heat_mmbtu','scenario4best_heat_mmbtu', 'scenario4worst_heat_mmbtu',
-                    'scenario4best_capex', 'scenario4worst_capex', 'baseline_heat_mmbtu'
+                    'scenario4best_capex', 'scenario4worst_capex', 'baseline_heat_mmbtu', 'baseline_noelec_ghg_emissions', 'baseline_elec_ghg_emissions',
+                    'scenario1best_noelec_ghg_emissions', 'scenario1worst_elec_ghg_emissions', 'scenario2best_noelec_ghg_emissions', 'scenario2worst_elec_ghg_emissions',
+                    'scenario3best_noelec_ghg_emissions', 'scenario3worst_elec_ghg_emissions', 'scenario4best_noelec_ghg_emissions', 'scenario4worst_elec_ghg_emissions',
+                    'scenario1best_elec_ghg_emissions', 'scenario1worst_noelec_ghg_emissions', 'scenario2best_elec_ghg_emissions', 'scenario2worst_noelec_ghg_emissions',
+                    'scenario3best_elec_ghg_emissions', 'scenario3worst_noelec_ghg_emissions', 'scenario4best_elec_ghg_emissions', 'scenario4worst_noelec_ghg_emissions'
                     ]
 
 long_form_df = new_df[selected_columns].copy()
@@ -473,7 +498,6 @@ for scenario, cols in scenarios.items():
     for col in cols:
         variable = col.split('_', 1)[1]  # Extraire le nom de la variable
         df_scenarios[scenario][variable] = long_form_df[col]
-
 # Ajouter une colonne 'Scenario' à chaque DataFrame pour identifier le scénario
 for scenario in df_scenarios:
     df_scenarios[scenario]['tech_scenario'] = scenario
@@ -482,7 +506,7 @@ for scenario in df_scenarios:
 df_combined = pd.concat(df_scenarios, ignore_index=True)
 
 # Sélectionner et réorganiser les colonnes finales
-final_columns = ['facility_id', 'facility_name', 'state', 'tech_scenario', 'capex', 'opex',  'ghg_emissions', 'change_in_electricity_demand_kwh', 'heat_mmbtu']
+final_columns = ['facility_id', 'facility_name', 'state', 'tech_scenario', 'capex', 'opex', 'change_in_electricity_demand_kwh', 'heat_mmbtu', 'elec_ghg_emissions', 'noelec_ghg_emissions']
 df_final = df_combined[final_columns]
 
 
