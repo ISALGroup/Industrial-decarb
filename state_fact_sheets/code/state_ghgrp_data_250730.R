@@ -1,3 +1,9 @@
+# August 1. 2025
+# EMT
+# Filters GHGRP rlps data for a specific state and naics codes
+# Creates emissions donut figure for state fact sheets
+
+
 library(readxl)
 library(dplyr)
 library(ggplot2)
@@ -7,10 +13,9 @@ library(tidyr)
 
 setwd("~/Documents/Industrial_Decarbonization/Industrial-decarb")
 # ---------- CONFIG ----------
-target_state <- "MI"
+target_state <- "MN"
 target_year <- 2023
 states_of_interest <- c("IL", "MI", "MD", "MN", "PA", "CO", "OR")
-
 
 sector_colors <- c(
   "Food & Beverage" = "#047C91",  # 311, 312
@@ -27,10 +32,6 @@ ghgrp_raw_df <- read_excel("state_fact_sheets/data/raw/rlps_ghg_emitter_subpart_
   filter(str_starts(naics_code, "31") | str_starts(naics_code, "32") | str_starts(naics_code, "33")) %>%
   filter(!str_starts(naics_code, "324")) %>%
   filter(!is.na(co2e_emission)) 
-
-state_ghgrp_df <- ghgrp_raw_df %>%
-  filter(state == target_state) %>%
-  select(naics_code, co2e_emission, facility_id, facility_name)
 
 target_naics <- read_excel("state_fact_sheets/data/raw/target_NAICS.xlsx") %>%
   clean_names() %>%
@@ -50,13 +51,16 @@ state_summary <- ghgrp_with_status %>%
   summarise(
     total_emissions = sum(co2e_emission, na.rm = TRUE),
     target_emissions = sum(co2e_emission[in_target], na.rm = TRUE),
-    done_emissions = sum(co2e_emission[in_target & status %in% c("Done", "In Progress")], na.rm = TRUE)
+    done_emissions = sum(co2e_emission[status == "Done"], na.rm = TRUE),
+    ip_or_done_emissions = sum(co2e_emission[in_target & status %in% c("Done", "In Progress")], na.rm = TRUE)
   ) %>%
   mutate(
     pct_target_of_total = round(100 * target_emissions / total_emissions, 1),
-    pct_done_of_target = round(100 * done_emissions / target_emissions, 1)
+    pct_done_of_target = round(100 * done_emissions / target_emissions, 1),
+    pct_ip_or_done_of_target = round(100 * ip_or_done_emissions / target_emissions, 1),
   ) %>%
-  select(state, pct_target_of_total, pct_done_of_target)
+  select(state, pct_target_of_total, pct_done_of_target, pct_ip_or_done_of_target) %>% 
+  filter(state %in% states_of_interest)
 
 
 in_progress_contributions <- ghgrp_with_status %>%
@@ -76,7 +80,12 @@ in_progress_contributions <- ghgrp_with_status %>%
   select(state, naics_code, description, pct_of_target) %>% 
   arrange(desc(pct_of_target))
 
-# ---------- MAP SECTORS ----------
+# ---------- MAP SECTORS BY SELECTED STATE ----------
+
+state_ghgrp_df <- ghgrp_raw_df %>%
+  filter(state == target_state) %>%
+  select(naics_code, co2e_emission, facility_id, facility_name)
+
 mapped_ghgrp_df <- state_ghgrp_df %>%
   mutate(
     sector = case_when(
@@ -151,7 +160,12 @@ print(donut_chart)
 # ---------- OUTPUTS ----------
 writexl::write_xlsx(output_table, "state_fact_sheets/data/modified/pa_emissions_summary_250730_.xlsx")
 writexl::write_xlsx(naics_coverage_by_state, "state_fact_sheets/data/modified/percent_emissions_models_finished_.xlsx")
-
 writexl::write_xlsx(output_table2, "state_fact_sheets/data/modified/mi_emissions_finished_naics_summary_250730_.xlsx")
+ggsave("state_fact_sheets/outputs/mn_donut_chart.png", donut_chart, width = 8, height = 6, dpi = 300)
+
+
+# ------- TOOLING AROUND --------
+
+
 
 

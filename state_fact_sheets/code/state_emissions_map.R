@@ -51,11 +51,13 @@ showtext_auto()
 # LOAD AND PREPARE DATA
 # =============================================================================
 
+setwd("~/Documents/Industrial_Decarbonization/Industrial-decarb")
+
 # Load facility location data - this has the basic facility info and coordinates
-mn_facilities <- read_csv("mn_facility_with_missing_coords.csv")
+mn_facilities <- read_csv("state_fact_sheets/data/raw/mn_facility_with_missing_coords.csv")
 
 # Load the detailed emissions data - this is where the correction happens
-emission_data <- read_excel("emission.xlsx")
+emission_data <- read_excel("state_fact_sheets/data/raw/emission.xlsx")
 
 # Focus on 2023 data (most recent complete year)
 emission_2023 <- emission_data %>%
@@ -125,7 +127,7 @@ mn_facilities_with_emissions <- mn_facilities %>%
 # Using official state GIS data for accurate boundaries
 
 # NOTE: This path needs to be updated for your system!
-gdb_path <- "C:/Users/Mikeychael/OneDrive/文档/Database_graph/Figure1/File/bdry_counties.gdb"
+gdb_path <- "state_fact_sheets/data/raw/bdry_counties.gdb"
 mn_counties <- st_read(gdb_path, layer = "County_Boundaries_in_Minnesota")
 mn_counties <- st_transform(mn_counties, crs = 4326)  # Standard lat/lon projection
 
@@ -212,6 +214,9 @@ corrected_map <- ggplot() +
 
 # Display the corrected map
 print(corrected_map)
+
+# save
+ggsave("state_fact_sheets/outputs/mn_emissions_map.png", corrected_map, width = 8, height = 6, dpi = 300)
 
 # =============================================================================
 # NOTES ON THE CORRECTION
