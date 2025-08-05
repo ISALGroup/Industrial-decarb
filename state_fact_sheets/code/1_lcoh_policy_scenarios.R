@@ -11,10 +11,10 @@ library(tidyverse)
 library(here)
 library(ggtext)
 
-
-# Pull in tech scenarios results
+# set working directory
 setwd("~/Documents/Industrial_Decarbonization/Industrial-decarb")
 
+# Pull in tech scenarios results
 tech_input_raw_df <- read_excel("state_fact_sheets/data/raw/lcoh_policy_modeling_input.xlsx")
 
 # Parameters
