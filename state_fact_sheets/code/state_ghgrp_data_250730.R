@@ -158,10 +158,10 @@ print(donut_chart)
 
 
 # ---------- OUTPUTS ----------
-writexl::write_xlsx(output_table, "state_fact_sheets/data/modified/pa_emissions_summary_250730_.xlsx")
+writexl::write_xlsx(output_table, "state_fact_sheets/data/modified/mn_emissions_summary_250805.xlsx")
 writexl::write_xlsx(naics_coverage_by_state, "state_fact_sheets/data/modified/percent_emissions_models_finished_.xlsx")
 writexl::write_xlsx(output_table2, "state_fact_sheets/data/modified/mi_emissions_finished_naics_summary_250730_.xlsx")
-ggsave("state_fact_sheets/outputs/mn_donut_chart.png", donut_chart, width = 8, height = 6, dpi = 300)
+ggsave("state_fact_sheets/outputs/mn_donut_chart_250805.png", donut_chart, width = 8, height = 6, dpi = 300)
 
 
 # ------- TOOLING AROUND --------
