@@ -116,7 +116,7 @@ class Flow:
 
 class Unit:
     def __init__(self, name, input_flows = None, output_flows = None, 
-                 calculations = None, expected_flows_in = None, expected_flows_out = None, coefficients = None, is_calc = False, required_calc_flows = 1):
+                 calculations = None, expected_flows_in = None, expected_flows_out = None, coefficients = None, is_calc = False, unit_type = None, tags = None, temperature = None,required_calc_flows = 1):
         self.name = name
         if not input_flows:
             self.input_flows = []
@@ -142,6 +142,20 @@ class Unit:
             self.coefficients = {}
         else:    
             self.coefficients = coefficients
+        if not unit_type:
+            self.unit_type = 'generic'
+        else:    
+            self.unit_type = unit_type
+        if not tags:
+            self.tags = []
+        else:    
+            self.tags = tags
+        if not temperature:
+            self.temperature = None
+        else:    
+            self.temperature = temperature
+
+                
         self.is_calc = is_calc
         self.required_calc_flows = required_calc_flows
     def __str__(self):
@@ -614,7 +628,7 @@ def unit_recap_to_file(filename, flowlist, unitlist):
 def utilities_recap(filename, flowlist, unitlist):
     with open(filename + '_utilites.csv', 'w', newline='') as csvfile:
         utilwriter = csv.writer(csvfile)
-        utilwriter.writerow(['Unit name', 'Heat demand (Steam kJ)', 'Heat demand (Fuel kJ)', 'Electricity demand (kWh)', 'Heat produced (kJ)', 'Fuel produced (kJ)' ,'Electricity produced (kWh)', 'Waste heat (kJ)', 'Compressed air demand (kg)', 'Compressed air produced (kg)'])
+        utilwriter.writerow(['Unit name', 'Temperature' ,'Heat demand (Steam kJ)', 'Heat demand (Fuel kJ)', 'Electricity demand (kWh)', 'Heat produced (kJ)', 'Fuel produced (kJ)' ,'Electricity produced (kWh)', 'Waste heat (kJ)', 'Compressed air demand (kg)', 'Compressed air produced (kg)'])
         for unit in unitlist:
             hd_s = 0
             hd_f = 0
@@ -663,7 +677,7 @@ def utilities_recap(filename, flowlist, unitlist):
                 if Flow.attributes['flow_type'] == 'Compressed air (produced on-site)':
                     ca_p += Flow.attributes['mass_flow_rate']
             
-            utilwriter.writerow([unit.name, str(hd_s), str(hd_f), str(ed), str(h_p), str(f_p) ,str(ep), str(wh), str(ca), str(ca_p)])
+            utilwriter.writerow([unit.name, unit.temperature, str(hd_s), str(hd_f), str(ed), str(h_p), str(f_p) ,str(ep), str(wh), str(ca), str(ca_p)])
 
 def calc_heat_demand(flowlist, unitlist):
     heat_demand = 0
