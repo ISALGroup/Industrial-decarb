@@ -27,37 +27,64 @@ naics_temps = pd.read_excel('data/facility_temps.xlsx', sheet_name= 'NAICS')
 
 facility_temps = pd.read_excel('data/facility_temps.xlsx', sheet_name= 'facility')
 
-unit_emissions2 = pd.merge(unit_emissions, facility_info.filter(['facility_id', 'facility_name', 'state', 'naics_title']), on= 'facility_id')
+unit_emissions2 = pd.merge(unit_emissions, facility_info.filter(['facility_id', 'facility_name', 'state', 'naics_title']), on= 'facility_id', how = 'outer')
 unit_emissions2.to_excel('output/merged.xlsx') 
-soi_naics_codes = [322110, 322120, 322130, 325193, 311313]
+soi_naics_codes = [311221, 325193, 311611, 312140]
 year = 2023
-states = ['MN']
+states = ['IL']
 filtered_merge0 = unit_emissions2[unit_emissions2['reporting_year'] == year]
-filtered_merge1 = filtered_merge0[unit_emissions2['state'].isin(states)]
+filtered_merge1 = filtered_merge0[filtered_merge0['state'].isin(states)]
 filtered_merge2 = filtered_merge1[filtered_merge1['primary_naics'].isin(soi_naics_codes)]
 
 
-
+filtered_merge2.to_excel('output/filtmerg2.xlsx')
 
 non_electrifiable_units = ['K (Kiln)', 'Pulp Mill Lime Kiln', 'Chemical Recovery Furnace']
 non_electrifiable_fuels = ['Wood and Wood Residuals (dry basis)', 'Other Biomass Gases']
+non_electrifiable_emissions = ['Carbon Dioxide Biogenic', 'Carbon Dioxide Biogenic (Spent Liquor)', 'Methane Spent Liquor', 'Nitrous Oxide Spent Liquor']
 
 def electrifiable_condition(row):
-    if row['unit_type'] in non_electrifiable_units or row['fuel_type'] in non_electrifiable_fuels:
+    if row['unit_type'] in non_electrifiable_units or row['fuel_type'] in non_electrifiable_fuels or row['ghg_name'] in non_electrifiable_emissions:
         return 0
     else:
         return row['fuel_energy']
 
 
-ghg_gases_list2 = ['Carbon Dioxide Non-Biogenic', 'Methane (Co2 eq)', 'Nitrous Oxide (Co2 eq)']
-only_biogenic = filtered_merge2[filtered_merge2['ghg_name'] == 'Carbon Dioxide Biogenic']
+ghg_gases_list2 = ['Carbon Dioxide Non-Biogenic', 'Methane (Co2 eq)',
+                   'Nitrous Oxide (Co2 eq)', 'Methane Spent Liquor', 'Nitrous Oxide Spent Liquor',
+                   'Carbon Dioxide Biogenic', 'Carbon Dioxide Biogenic (Spent Liquor)']
+bio_ghg_gases = ['Methane Spent Liquor', 'Nitrous Oxide Spent Liquor']
+only_biogenic = filtered_merge2[filtered_merge2['ghg_name'].isin(bio_ghg_gases)]
 co2eq_filtered_dataset = filtered_merge2[filtered_merge2['ghg_name'].isin(ghg_gases_list2)]
-summed_emissions = co2eq_filtered_dataset.groupby(['facility_id', 'unit_type','fuel_type', 'unit_name', 'primary_naics', 'facility_name',
-                                                   'state', 'reporting_year'], dropna=False)['ghg_quantity'].sum().reset_index()
-added_price = pd.merge(summed_emissions, fuel_prices, on = 'fuel_type')
-added_ef = pd.merge(added_price, fuel_emission_factors, on = 'fuel_type')
+
+ghgrp_methane_ef = 25.04
+ghgrp_nitrous_oxide_ef = 298.46
+
+def ghg_conv(row):
+    if row['ghg_name'] == 'Methane Spent Liquor':
+        return row['ghg_quantity'] * ghgrp_methane_ef
+    elif row['ghg_name'] == 'Nitrous Oxide Spent Liquor':
+        return row['ghg_quantity'] * ghgrp_methane_ef
+    else:
+        return row['ghg_quantity']
+
+converted_db = co2eq_filtered_dataset
+converted_db['ghg_quantity_converted'] = converted_db.apply(ghg_conv, axis= 1)
+converted_db['ghg_quantity'] = converted_db['ghg_quantity_converted']
+converted_db.to_excel('output/ghgconversion.xlsx')
+
+def ghgtoemissions(row):
+    if row['emission_factor']:
+        return 1000*row['ghg_quantity']/row['emission_factor']
+    else:
+        return 0
+
+
+added_price = pd.merge(converted_db, fuel_prices, on = 'fuel_type', how = 'outer')
+added_ef = pd.merge(added_price, fuel_emission_factors, on = 'fuel_type', how = 'outer')
 fuel_energy_added = added_ef
-fuel_energy_added['fuel_energy'] = 1000*fuel_energy_added['ghg_quantity']/fuel_energy_added['emission_factor'] #in MMBTU
+
+fuel_energy_added['fuel_energy'] = fuel_energy_added.apply(ghgtoemissions, axis= 1) #in MMBTU
 
 electrified_amount = fuel_energy_added
 electrified_amount['electrifiable_fuel_energy'] = electrified_amount.apply(electrifiable_condition, axis= 1)
@@ -66,37 +93,42 @@ electrified_amount['electrifiable_emissions'] = electrified_amount['electrifiabl
 electrified_amount['fuel_cost'] = electrified_amount['fuel_energy'] * electrified_amount['fuel_price']
 
 electrified_amount['electrifiable_fuel_cost'] = electrified_amount['electrifiable_fuel_energy'] * electrified_amount['fuel_price']
+summed_emissions = electrified_amount.groupby(['facility_id', 'naics_title', 'primary_naics', 'facility_name','state', 'reporting_year'], dropna=False)[['ghg_quantity', 'fuel_energy', 'electrifiable_fuel_energy',
+                                                                                              'electrifiable_emissions', 'fuel_cost', 'electrifiable_fuel_cost']].sum().reset_index()
 
-bio_summed_emissions = only_biogenic.groupby(['facility_id', 'unit_type','fuel_type', 'unit_name', 'primary_naics', 'facility_name',
-                                                   'state', 'reporting_year'], dropna=False)['ghg_quantity'].sum().reset_index()
-bio_added_price = pd.merge(bio_summed_emissions, fuel_prices, on = 'fuel_type')
-bio_added_ef = pd.merge(bio_added_price, fuel_emission_factors, on = 'fuel_type')
-bio_fuel_energy_added = bio_added_ef
-bio_fuel_energy_added['fuel_energy'] = 1000*bio_fuel_energy_added['ghg_quantity']/bio_fuel_energy_added['emission_factor'] #in MMBTU
+summed_emissions.to_excel('eqsum.xlsx')
 
-bio_electrified_amount = bio_fuel_energy_added
-bio_electrified_amount['electrifiable_fuel_energy'] = bio_electrified_amount.apply(electrifiable_condition, axis= 1)
+# bio_added_price = pd.merge(only_biogenic, fuel_prices, on = 'fuel_type')
+# bio_added_ef = pd.merge(bio_added_price, fuel_emission_factors, on = 'fuel_type')
+# bio_fuel_energy_added = bio_added_ef
+# bio_fuel_energy_added['fuel_energy'] = 1000*bio_fuel_energy_added['ghg_quantity']/bio_fuel_energy_added['emission_factor'] #in MMBTU
 
-bio_electrified_amount['electrifiable_emissions'] = bio_electrified_amount['electrifiable_fuel_energy'] * bio_fuel_energy_added['emission_factor'] / 1000.
-bio_electrified_amount['fuel_cost'] = bio_electrified_amount['fuel_energy'] * bio_electrified_amount['fuel_price']
+# bio_electrified_amount = bio_fuel_energy_added
+# bio_electrified_amount['electrifiable_fuel_energy'] = bio_electrified_amount.apply(electrifiable_condition, axis= 1)
 
-bio_electrified_amount['electrifiable_fuel_cost'] = bio_electrified_amount['electrifiable_fuel_energy'] * bio_electrified_amount['fuel_price']
+# bio_electrified_amount['electrifiable_emissions'] = bio_electrified_amount['electrifiable_fuel_energy'] * bio_fuel_energy_added['emission_factor'] / 1000.
+# bio_electrified_amount['fuel_cost'] = bio_electrified_amount['fuel_energy'] * bio_electrified_amount['fuel_price']
 
+# bio_electrified_amount['electrifiable_fuel_cost'] = bio_electrified_amount['electrifiable_fuel_energy'] * bio_electrified_amount['fuel_price']
 
+# bio_summed_emissions =  bio_electrified_amount.groupby(['facility_id', 'unit_name', 'primary_naics', 'facility_name','state', 'reporting_year'], dropna=False)[['ghg_quantity', 'fuel_energy', 'electrifiable_fuel_energy',
+#                                                                                              'electrifiable_emissions', 'fuel_cost', 'electrifiable_fuel_cost']].sum().reset_index()
 
-
-
-mergedbio_nonbio = pd.merge(electrified_amount, bio_electrified_amount, on = ['facility_id', 'unit_type','fuel_type', 'unit_name', 'primary_naics', 'facility_name',
-                                                   'state', 'reporting_year'], how = 'inner')
-
-mergedbio_nonbio['ghg_quantity'] = mergedbio_nonbio[['ghg_quantity_x', 'ghg_quantity_y']].sum(axis=1)
-mergedbio_nonbio['fuel_energy'] = mergedbio_nonbio[['fuel_energy_x', 'fuel_energy_y']].sum(axis=1)
-mergedbio_nonbio['electrifiable_fuel_energy'] = mergedbio_nonbio[['electrifiable_fuel_energy_x', 'electrifiable_fuel_energy_y']].sum(axis=1)
-mergedbio_nonbio['electrifiable_emissions'] = mergedbio_nonbio[['electrifiable_emissions_x', 'electrifiable_emissions_y']].sum(axis=1)
-mergedbio_nonbio['fuel_cost'] = mergedbio_nonbio[['fuel_cost_x', 'fuel_cost_y']].sum(axis=1)
-mergedbio_nonbio['electrifiable_fuel_cost'] = mergedbio_nonbio[['electrifiable_fuel_cost_x', 'electrifiable_fuel_cost_y']].sum(axis=1)
+# bio_summed_emissions.to_excel('biosum.xlsx')
+                                                                                              
+                                                                                              
 
 
+# mergedbio_nonbio = pd.merge(electrified_amount, bio_electrified_amount, on = ['naics_title', 'facility_id', 'primary_naics', 'facility_name','state', 'reporting_year'], how = 'inner')
+
+# mergedbio_nonbio['ghg_quantity'] = mergedbio_nonbio[['ghg_quantity_x', 'ghg_quantity_y']].sum(axis=1)
+# mergedbio_nonbio['fuel_energy'] = mergedbio_nonbio[['fuel_energy_x', 'fuel_energy_y']].sum(axis=1)
+# mergedbio_nonbio['electrifiable_fuel_energy'] = mergedbio_nonbio[['electrifiable_fuel_energy_x', 'electrifiable_fuel_energy_y']].sum(axis=1)
+# mergedbio_nonbio['electrifiable_emissions'] = mergedbio_nonbio[['electrifiable_emissions_x', 'electrifiable_emissions_y']].sum(axis=1)
+# mergedbio_nonbio['fuel_cost'] = mergedbio_nonbio[['fuel_cost_x', 'fuel_cost_y']].sum(axis=1)
+# mergedbio_nonbio['electrifiable_fuel_cost'] = mergedbio_nonbio[['electrifiable_fuel_cost_x', 'electrifiable_fuel_cost_y']].sum(axis=1)
+
+# mergedbio_nonbio.to_excel('bnbmerge.xlsx')
 
 # added_price = pd.merge(concated, fuel_prices, on = 'fuel_type')
 # added_ef = pd.merge(added_price, fuel_emission_factors, on = 'fuel_type')
@@ -132,12 +164,12 @@ mergedbio_nonbio['electrifiable_fuel_cost'] = mergedbio_nonbio[['electrifiable_f
 boiler_efficiency = 0.8
 operating_hours = 8000
 mmbtu_to_kwh = 293.07107
-mergedbio_nonbio['electrifiable_process_heat_equivalent'] = mergedbio_nonbio['electrifiable_fuel_energy']*boiler_efficiency
+summed_emissions['electrifiable_process_heat_equivalent'] = summed_emissions['electrifiable_fuel_energy']*boiler_efficiency
 
 
-mergedbio_nonbio['electrifiable_process_heat_kwh'] = mergedbio_nonbio['electrifiable_process_heat_equivalent'] * mmbtu_to_kwh
+summed_emissions['electrifiable_process_heat_kwh'] = summed_emissions['electrifiable_process_heat_equivalent'] * mmbtu_to_kwh
 
-mergedbio_nonbio['equipment_sizing'] = mergedbio_nonbio['electrifiable_process_heat_kwh']/operating_hours
+summed_emissions['equipment_sizing'] = summed_emissions['electrifiable_process_heat_kwh']/operating_hours
 
 ### Scenario 1
 
@@ -145,7 +177,7 @@ e_boiler_low = 17 #$/kWth
 e_boiler_high = 60 #$/kWth
 
 
-scenario1 = mergedbio_nonbio
+scenario1 = summed_emissions
 scenario1['eboiler_low_capex'] = scenario1['equipment_sizing'] * e_boiler_low
 scenario1['eboiler_high_capex'] = scenario1['equipment_sizing'] * e_boiler_high
 
@@ -539,24 +571,23 @@ scenarios = {
 
 df_scenarios = {scenario: long_form_df[columns_of_interest].copy() for scenario in scenarios}
 
-# Ajouter les valeurs des colonnes spécifiques à chaque scénario
+
 for scenario, cols in scenarios.items():
     for col in cols:
-        variable = col.split('_', 1)[1]  # Extraire le nom de la variable
+        variable = col.split('_', 1)[1]  # get variable name after the underscore
         df_scenarios[scenario][variable] = long_form_df[col]
-# Ajouter une colonne 'Scenario' à chaque DataFrame pour identifier le scénario
+
 for scenario in df_scenarios:
     df_scenarios[scenario]['tech_scenario'] = scenario
 
-# Combiner tous les DataFrames en un seul
+
 df_combined = pd.concat(df_scenarios, ignore_index=True)
 
-# Sélectionner et réorganiser les colonnes finales
 final_columns = ['facility_id', 'facility_name', 'state', 'tech_scenario', 'capex', 'opex', 'change_in_electricity_demand_kwh', 'heat_mmbtu', 'elec_ghg_emissions', 'noelec_ghg_emissions']
 df_final = df_combined[final_columns]
 
 
-df_final.to_excel('output/longform.xlsx')
+df_final.to_excel('output/longform_il.xlsx')
 
 
 
