@@ -21,7 +21,7 @@ facility_level_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/2
 
 # pull in the state emissions file
 state_emissions_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250812_state_emissions_results_mn.xlsx") 
-state_lcoh_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250812_state_lcoh_results_mn.xlsx") 
+#state_lcoh_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250812_state_lcoh_results_mn.xlsx") didn't use
 
 # configure state clean electricity targets
 clean_targets <- c("Current Grid Mix", 0.8, 1)
