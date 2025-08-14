@@ -20,7 +20,8 @@ library(stringr)
 
 # --- Load Input Data ---
 
-# Tech scenario input
+# Tech scenario input 
+# UPDATE THIS FILE TO WITH STATE OF CHOICE (other files are the same across states)
 tech_input_df <- read_excel("LCOH modelling/output/longform_mn_wsoybeansnfats_update.xlsx") %>%
   mutate(facility_name = tolower(facility_name)) %>% 
   mutate(baseline_co2e_emissions = elec_ghg_emissions + noelec_ghg_emissions) %>% 
@@ -31,7 +32,7 @@ facility_lat_long <- read_excel("state_fact_sheets/data/raw/rlps_ghg_emitter_sub
   select(facility_id, latitude, longitude) %>% 
   distinct(facility_id, .keep_all = TRUE)
 
-# Pull in facility info, this file doesn't have lat and long...
+# Pull in facility info, this file doesn't have lat and long... (maybe add in the future)
 facility_info <- read_excel("state_fact_sheets/data/raw/Facility_and_Unit_Emissions_Database_2023_v3.xlsx", sheet = 2) %>% 
   clean_names() %>% 
   rename(naics_code = primary_naics) %>% 
