@@ -17,14 +17,15 @@ setwd("~/Documents/Industrial_Decarbonization/Industrial-decarb")
 
 # ------ Pull in LCOH Policy and Emissions Results Data -------
 # pull in facility level file
-facility_level_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250812_facility_level_results_mn.xlsx") 
+facility_level_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250812_facility_level_results_mn_v2.xlsx") 
 
 # pull in the state emissions file
-state_emissions_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250812_state_emissions_results_mn.xlsx") 
+state_emissions_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250812_state_emissions_results_mn_v2.xlsx") 
 #state_lcoh_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250812_state_lcoh_results_mn.xlsx") didn't use
 
 # configure state clean electricity targets
 clean_targets <- c("Current Grid Mix", 0.8, 1)
+
 # --------- EMISSIONS FIGURE -----------
 
 # Define scenarios and colors
@@ -53,6 +54,13 @@ emissions_df <- state_emissions_df %>%
     clean_grid_scenario_label = factor(
       clean_grid_scenario_label,
       levels = c("Current Grid Mix", "80% Clean Grid", "100% Clean Grid")
+    ), 
+    naics_description = case_when(
+      naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
+      naics_description == 'Ethyl Alcohol Manufacturing' ~ 'Ethyl Alcohol', 
+      naics_description == 'Fats and Oils Refining and Blending' ~ 'Fats & Oils', 
+      naics_description == 'Paper Mills' ~ 'Pulp & Paper', 
+      naics_description == 'Soybean and Other Oilseed Processing' ~ 'Soybeans'
     )
   ) %>%
   group_by(naics_description, clean_grid_scenario_label, scenario_base) %>%

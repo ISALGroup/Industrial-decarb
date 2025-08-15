@@ -3,6 +3,7 @@
 # Version 1.2
 # Preparing policy modeling results for webtool dev + lcoh figure generation
 
+# 8/13: added fats/soybeans, changed policy labels, changed emissions_total_mt_co2e to emissions_total_t_co2e
 # 8/4 update: added in lat and long, added a current grid mix scenario 
 
 # Load Libraries
@@ -15,12 +16,13 @@ library(janitor)
 library(stringr)
 
 # Set working directory
-setwd("~/Documents/Industrial_Decarbonization/Industrial-decarb")
+#setwd("~/Documents/Industrial_Decarbonization/Industrial-decarb")
 
 # --- Load Input Data ---
 
-# Tech scenario input
-tech_input_df <- read_excel("LCOH modelling/output/longform_mn.xlsx") %>%
+# Tech scenario input 
+# UPDATE THIS FILE TO WITH STATE OF CHOICE (other files are the same across states)
+tech_input_df <- read_excel("LCOH modelling/output/longform_mn_wsoybeansnfats_update.xlsx") %>%
   mutate(facility_name = tolower(facility_name)) %>% 
   mutate(baseline_co2e_emissions = elec_ghg_emissions + noelec_ghg_emissions) %>% 
   select(-1, -facility_id, -opex) #removing for now til i get complete results from antoine
@@ -30,7 +32,7 @@ facility_lat_long <- read_excel("state_fact_sheets/data/raw/rlps_ghg_emitter_sub
   select(facility_id, latitude, longitude) %>% 
   distinct(facility_id, .keep_all = TRUE)
 
-# Pull in facility info, this file doesn't have lat and long...
+# Pull in facility info, this file doesn't have lat and long... (maybe add in the future)
 facility_info <- read_excel("state_fact_sheets/data/raw/Facility_and_Unit_Emissions_Database_2023_v3.xlsx", sheet = 2) %>% 
   clean_names() %>% 
   rename(naics_code = primary_naics) %>% 
@@ -103,7 +105,7 @@ policy_applied_df <- tidyr::crossing(tech_combined_lcoh, policy_grid) %>%
     elec_price_adj = elec_price * (1 - elec_discount),
     opex_adj = change_in_electricity_demand_kwh * elec_price_adj,
     lcoh = (capex_adj / discount_sum + opex_adj) / heat_mmbtu,
-    policy_label = paste0("Capex subsidy: ", capex_subsidy * 100, "%, Elec: -", elec_discount * 100, "%")
+    policy_label = paste0("Capex: -", capex_subsidy * 100, "%, Elec: -", elec_discount * 100, "%")
   )
 
 # Add No Policy Scenario
@@ -157,7 +159,7 @@ facility_emissions_no_baseline <- facility_grid_long_df %>%
   filter(tech_scenario != "Baseline") %>% 
   mutate(
     # emissions formula 
-    emissions_total_mt_co2e = ((change_in_electricity_demand_kwh * scaled_co2e_factor)/1000 + noelec_ghg_emissions),
+    emissions_total_t_co2e = ((change_in_electricity_demand_kwh * scaled_co2e_factor)/1000 + noelec_ghg_emissions),
     emissions_change_kg_nox = (change_in_electricity_demand_kwh * scaled_nox_factor),
     emissions_change_kg_so2 = (change_in_electricity_demand_kwh * scaled_so2_factor),
     emissions_change_kg_pm25 = (change_in_electricity_demand_kwh * scaled_pm25_factor),
@@ -166,7 +168,7 @@ facility_emissions_no_baseline <- facility_grid_long_df %>%
 facility_emissions_baseline <- facility_grid_long_df %>% 
   filter(tech_scenario == "Baseline") %>% 
   mutate(
-    emissions_total_mt_co2e = baseline_co2e_emissions, 
+    emissions_total_t_co2e = baseline_co2e_emissions, 
     emissions_change_kg_nox = 0,
     emissions_change_kg_so2 = 0,
     emissions_change_kg_pm25 = 0
@@ -182,7 +184,7 @@ facility_level_long_df <- rbind(facility_emissions_baseline, facility_emissions_
   select(facility_id, facility_name, state, county_fips, latitude, longitude, naics_code, naics_description, 
        sector, subregion, tech_scenario, heat_mmbtu, change_in_electricity_demand_kwh, capex_adj, capex_subsidy, 
        elec_discount, elec_price_adj, opex_adj, lcoh, policy_label, current_fossil_share, current_clean_share, grid_clean_pct_scenario, 
-       baseline_co2e_emissions, elec_ghg_emissions, noelec_ghg_emissions, emissions_total_mt_co2e, emissions_change_kg_nox,
+       baseline_co2e_emissions, elec_ghg_emissions, noelec_ghg_emissions, emissions_total_t_co2e, emissions_change_kg_nox,
        emissions_change_kg_so2, emissions_change_kg_pm25, clean_grid_scenario_label)
 
 # ------------ COUNTY AND STATE LEVEL RESULTS ---------------
@@ -195,7 +197,7 @@ county_emissions_summary <- facility_level_long_df %>%
     elec_ghg_emissions        = sum(elec_ghg_emissions, na.rm = TRUE),
     noelec_ghg_emissions      = sum(noelec_ghg_emissions, na.rm = TRUE),
     baseline_co2e_emissions   = sum(baseline_co2e_emissions, na.rm = TRUE),
-    emissions_total_mt_co2e   = sum(emissions_total_mt_co2e, na.rm = TRUE),
+    emissions_total_t_co2e   = sum(emissions_total_t_co2e, na.rm = TRUE),
     emissions_change_kg_nox = sum(emissions_change_kg_nox, na.rm = TRUE),
     emissions_change_kg_so2 = sum(emissions_change_kg_so2, na.rm = TRUE),
     emissions_change_kg_pm25 = sum(emissions_change_kg_pm25, na.rm = TRUE),
@@ -208,7 +210,7 @@ state_emissions_summary <- facility_level_long_df %>%
     elec_ghg_emissions        = sum(elec_ghg_emissions, na.rm = TRUE),
     noelec_ghg_emissions      = sum(noelec_ghg_emissions, na.rm = TRUE),
     baseline_co2e_emissions   = sum(baseline_co2e_emissions, na.rm = TRUE),
-    emissions_total_mt_co2e   = sum(emissions_total_mt_co2e, na.rm = TRUE),
+    emissions_total_t_co2e   = sum(emissions_total_t_co2e, na.rm = TRUE),
     emissions_change_kg_nox = sum(emissions_change_kg_nox, na.rm = TRUE),
     emissions_change_kg_so2 = sum(emissions_change_kg_so2, na.rm = TRUE),
     emissions_change_kg_pm25 = sum(emissions_change_kg_pm25, na.rm = TRUE),
@@ -237,11 +239,11 @@ county_lcoh_summary <- facility_level_long_df %>%
   )
 
 # --- Save ---
-writexl::write_xlsx(facility_level_long_df, "state_fact_sheets/data/modified/state-data/MN/250812_facility_level_results_mn.xlsx") 
-writexl::write_xlsx(county_emissions_summary, "state_fact_sheets/data/modified/state-data/MN/250812_county_emissions_results_mn.xlsx")
-writexl::write_xlsx(county_lcoh_summary, "state_fact_sheets/data/modified/state-data/MN/250812_county_lcoh_results_mn.xlsx")
+writexl::write_xlsx(facility_level_long_df, "state_fact_sheets/data/modified/state-data/MN/250812_facility_level_results_mn_v2.xlsx") 
+writexl::write_xlsx(county_emissions_summary, "state_fact_sheets/data/modified/state-data/MN/250812_county_emissions_results_mn_v2.xlsx")
+writexl::write_xlsx(county_lcoh_summary, "state_fact_sheets/data/modified/state-data/MN/250812_county_lcoh_results_mn_v2.xlsx")
 
-writexl::write_xlsx(state_emissions_summary, "state_fact_sheets/data/modified/state-data/MN/250812_state_emissions_results_mn.xlsx")
-writexl::write_xlsx(state_lcoh_summary, "state_fact_sheets/data/modified/state-data/MN/250812_state_lcoh_results_mn.xlsx")
+writexl::write_xlsx(state_emissions_summary, "state_fact_sheets/data/modified/state-data/MN/250812_state_emissions_results_mn_v2.xlsx")
+writexl::write_xlsx(state_lcoh_summary, "state_fact_sheets/data/modified/state-data/MN/250812_state_lcoh_results_mn_v2.xlsx")
 
-writexl::write_xlsx(tech_combined_df, "state_fact_sheets/data/modified/state-data/MN/250811_facility_option_b_sample_mn.xlsx")
+writexl::write_xlsx(tech_combined_df, "state_fact_sheets/data/modified/state-data/MN/250811_facility_option_b_sample_mn_v2.xlsx")
