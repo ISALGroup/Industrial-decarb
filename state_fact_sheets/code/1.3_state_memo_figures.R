@@ -17,16 +17,16 @@ library(stringr)
 
 # ------ Pull in LCOH Policy and Emissions Results Data -------
 # pull in facility level file
-facility_level_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250812_facility_level_results_mn_v2.xlsx") 
+facility_level_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250815_facility_lcoh_results_mn.xlsx") 
 
 # pull in the state emissions file
-state_emissions_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250812_state_emissions_results_mn_v2.xlsx") 
+state_emissions_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250815_state_emissions_results_mn_v3.xlsx") 
 #state_lcoh_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250812_state_lcoh_results_mn.xlsx") didn't use
+
+# --------- EMISSIONS FIGURE -----------
 
 # configure state clean electricity targets
 clean_targets <- c("Current Grid Mix", 0.8, 1)
-
-# --------- EMISSIONS FIGURE -----------
 
 # Define scenarios and colors
 scenario_colors <- c(
@@ -50,7 +50,6 @@ emissions_df <- state_emissions_df %>%
   filter(clean_grid_scenario_label %in% c("Current Grid Mix", "80% Clean Grid", "100% Clean Grid")) %>%
   mutate(
     scenario_base = str_remove(tech_scenario, "Best|Worst"),
-    emissions_Mt = emissions_total_t_co2e / 1000000,
     clean_grid_scenario_label = factor(
       clean_grid_scenario_label,
       levels = c("Current Grid Mix", "80% Clean Grid", "100% Clean Grid")
@@ -64,12 +63,14 @@ emissions_df <- state_emissions_df %>%
       naics_description == 'Soybean and Other Oilseed Processing' ~ 'Soybeans'
     ), 
     industry_clean = factor(industry_clean,
-                            levels = c("Ethyl Alcohol", "Pulp & Paper", "Beet Sugar", "Soybeans", "Fats & Oils"))
+                            levels = c("Pulp & Paper", "Ethyl Alcohol", "Beet Sugar", "Soybeans", "Fats & Oils"))
   ) %>%
+  # just going with the best case for now 
+  filter(str_detect(tech_scenario, 'Best')|tech_scenario == 'Baseline') %>%
   group_by(industry_clean, clean_grid_scenario_label, scenario_base) %>%
-  summarise(point = mean(emissions_Mt, na.rm = TRUE), .groups = "drop") 
+  summarise(emissions_Mt = sum(emissions_total_t_co2e)/1000000) 
 
-emissions_plot <- ggplot(emissions_df, aes(x = industry_clean, y = point, fill = scenario_base)) +
+emissions_plot <- ggplot(emissions_df, aes(x = industry_clean, y = emissions_Mt, fill = scenario_base)) +
   geom_col(position = position_dodge(width = 0.8), width = 0.6) +
   facet_wrap(~ clean_grid_scenario_label, nrow = 1) +
   labs(
@@ -78,7 +79,7 @@ emissions_plot <- ggplot(emissions_df, aes(x = industry_clean, y = point, fill =
     fill = "Tech Scenario"
   ) +
   scale_fill_manual(values = scenario_colors, labels = scenario_labels) +
-  scale_y_continuous(limits = c(0, max(emissions_df$point) * 1.1), expand = c(0, 0)) + # dynamic limit
+  scale_y_continuous(limits = c(0, max(emissions_df$emissions_Mt) * 1.1), expand = c(0, 0)) + # dynamic limit
   theme_bw(base_size = 14) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1, size = 9), 
