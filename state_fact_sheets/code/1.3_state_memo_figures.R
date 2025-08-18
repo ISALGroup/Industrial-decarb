@@ -17,7 +17,7 @@ library(stringr)
 
 # ------ Pull in LCOH Policy and Emissions Results Data -------
 # pull in facility level file
-facility_level_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250815_facility_lcoh_results_mn.xlsx") 
+facility_level_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250818_facility_lcoh_results_mn.xlsx") 
 
 # pull in the state emissions file
 state_emissions_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250815_state_emissions_results_mn_v3.xlsx") 
@@ -104,7 +104,8 @@ ng_min <- 7
 ng_max <- 8.5
 
 # Prepare data for candlestick
-lcoh_tech_sector <- facility_level_df %>%
+lcoh_tech_sector <- 
+  facility_level_df %>%
   filter(
     policy_label == "No Policy",             # keep this filter if applicable
     !str_detect(tech_scenario, "Baseline")   # drop baseline scenario
@@ -131,8 +132,8 @@ lcoh_tech_sector <- facility_level_df %>%
   ) 
 
 # Technology scenario x sector plot 
-technology_by_sector_lcoh_plot <- ggplot(
-  lcoh_tech_sector,
+technology_by_sector_lcoh_plot <- 
+  ggplot(lcoh_tech_sector,
   aes(x = scenario_label, y = lcoh, color = industry_clean)) +
   
   # Natural gas range display 
