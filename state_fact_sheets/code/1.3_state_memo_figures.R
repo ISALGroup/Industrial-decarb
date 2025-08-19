@@ -64,7 +64,7 @@ emissions_df <-
       naics_description == 'Soybean and Other Oilseed Processing' ~ 'Soybeans'
     ), 
     industry_clean = factor(industry_clean,
-                            levels = df$category[order(df$value, decreasing = TRUE)]
+                            # SET
                             levels = c("Pulp & Paper", "Ethyl Alcohol", "Beet Sugar", "Soybeans", "Fats & Oils"))
   ) %>%
   # just going with the best case for now 
@@ -92,7 +92,7 @@ emissions_plot <- ggplot(emissions_df, aes(x = industry_clean, y = emissions_Mt,
 
 emissions_plot
 
-# ------------ LCOH by Technology Scenario Figure --------------
+# --------- LCOH by Technology Scenario Figure --------------
 # Define sector colors
 sector_colors <- c(
   "Pulp & Paper" = "#6d7d33",
@@ -170,7 +170,7 @@ technology_by_sector_lcoh_plot <-
 
 technology_by_sector_lcoh_plot
 
-# ----------- SCENARIO 4 LCOH POLICY MODELING -------------
+# --------- SCENARIO 4 LCOH POLICY MODELING -------------
 # configure policy models
 capex_levels <- c(0.3, 0.5, 1)
 elec_levels <- c(0.25, 0.5)
@@ -253,7 +253,7 @@ lcoh_policy_combined_plot <-
 lcoh_policy_combined_plot
 
 
-# ---------- SAVE PLOTS ----------
+# --------- SAVE PLOTS ----------
 ggsave("state_fact_sheets/outputs/state-fact-sheet-figures/MN/mn_emissions_plot_v2.png",
        emissions_plot, 
        width = 8, height = 5, dpi = 300)
