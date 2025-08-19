@@ -3,36 +3,45 @@
 # Version 1.2
 # Preparing policy modeling results for webtool dev + lcoh figure generation
 
-# 8/18: updated LCOH calculations
+# 8/18: updated LCOH calculations, refined pipeline 
 # 8/15: split emissions & lcoh analysis 
 # 8/13: added fats/soybeans, changed policy labels, changed emissions_total_mt_co2e to emissions_total_t_co2e
 # 8/4 update: added in lat and long, added a current grid mix scenario 
 
+#### SET-UP ####
 # Load Libraries
 library(readxl)
 library(writexl)
 library(dplyr)
-library(ggplot2)
 library(tidyr)
-library(janitor)
 library(stringr)
+library(glue)
 
-# Set working directory
-#setwd("~/Documents/Industrial_Decarbonization/Industrial-decarb")
-
-#### SET-UP ####
+# Set state :) 
+state <- "MN"
 
 # Tech scenario input 
-# UPDATE THIS FILE TO WITH STATE OF CHOICE (other files are the same across states)
 tech_input_df <- 
-  read_excel("LCOH modelling/output/longform_mn_wsoybeansnfats_update.xlsx") %>%
+  read_excel(glue("LCOH modelling/output/longform_{state}.xlsx")) %>%
   mutate(facility_name = tolower(facility_name), 
          baseline_co2e_emissions = elec_ghg_emissions + noelec_ghg_emissions) %>% 
-           
-  # # TEMPORARY: natgas capex calculation
-  # slice(if_else(tech_scenario == 7, 2L, 1L))) %>%
-  # 
-  # select(-1, -facility_id, -opex) #removing for now til i get complete results from antoine
+  select(-1, -facility_id, -opex) #removing for now til i get complete results from antoine
+
+# TEMPORARY: natgas capex calculation
+natgas_best <- 
+  tech_input_df %>%
+  filter(tech_scenario == 'Baseline') %>%
+  mutate(tech_scenario = 'BaselineBest', 
+         capex = (1.81 * heat_mmbtu * 293.071) / 8000)
+
+tech_input_df <- 
+  tech_input_df %>%
+  mutate(
+    tech_scenario = if_else(tech_scenario == 'Baseline', 'BaselineWorst', tech_scenario),
+    capex = if_else(tech_scenario == 'BaselineWorst', (18.11 * heat_mmbtu * 293.071) / 8000, capex)
+  ) %>%
+  bind_rows(natgas_best)
+    
 
 # Pull in lat and long from rlps file
 facility_lat_long <- 
@@ -87,8 +96,8 @@ tech_combined_df <- tech_input_df %>%
   left_join(egrid_df, by = "subregion") 
 
 #### EMISSIONS CALCULATION #### 
-# --- Create Grid Intensity Levels (from 50% to 100% clean) ---
 
+# --- Create Grid Intensity Levels (from 50% to 100% clean) ---
 grid_scenarios <- tibble(grid_clean_pct_scenario = c("Current Mix",seq(0.5, 1.0, by = 0.1)))
 
 # --- Expand to All Grid Scenarios ---
@@ -178,34 +187,106 @@ state_emissions_summary <- facility_emissions_long_df %>%
     .groups = "drop"
   ) 
 
-#### LCOH CALCULATION #### 
-# --- Parameters for LCOH ---
-r <- 0.065                # discount rate
-t <- 15                   # years 
-elec_price <- 0.092       # electricity price 
-maintenance <- 0
-
+#### LCOH FUNCTION #### 
 lcoh_func <- function(
-    capex,
-    years,                 
-    heat_mmbtu,
-    r,                     
-    opex_labor,
-    change_in_electricity_demand_kwh,
-    elec_price,
-    capex_subsidy, 
-    elec_discount
-) {
+  ## parameters
+  r, 
+  elec_price,
+  ng_price,
+  t, # for now, assume same lifetime across equipment, but we can change this by technology later 
+  # nat gas boiler assumptions
+  #t_ngboiler,
+  ngboiler_om_high, 
+  ngboiler_om_low, 
+  # e-boiler assumptions
+  #t_eboiler, 
+  eboiler_om_high, 
+  eboiler_om_low, 
+  # hp assumptions
+  #t_hthp, 
+  hthp_om_high, 
+  hthp_om_low, 
   
-  capex_adj <- capex * (1 - capex_subsidy)
-  opex_elec <- change_in_electricity_demand_kwh * (elec_price * (1-elec_discount))
-  opex_labor <- maintenance*capex
+  ## tech scenario + calculations 
+  tech_scenario,
+  capex,
+  heat_mmbtu,
+  change_in_electricity_demand_kwh,
   
-  numerator   <- (capex_adj + sum(opex_labor / (1 + r)^(0:(t - 1))) + sum(opex_elec / (1 + r)^(0:(t - 1))))
-  denominator <- sum((heat_mmbtu/(1 + r)^(0:(t - 1))))
-  
-  numerator / denominator
-}
+  ## policy scenarios
+  capex_subsidy, 
+  elec_discount){
+    # time discounting formula 
+    discount_sum <- sum((1 + r)^-(1:t))
+    
+    ## Inputting different parameters for different tech scenarios 
+    case_when(
+      str_detect(tech_scenario, "BaselineWorst") ~ {
+        opex_ng <- heat_mmbtu * ng_price      # energy costs
+        opex_om <- ngboiler_om_low * capex    # o&m costs
+        
+        numerator   <- capex + ((opex_om + opex_ng) * discount_sum)
+        denominator <- heat_mmbtu * discount_sum
+        
+        numerator / denominator
+      }, 
+      str_detect(tech_scenario, "BaselineBest") ~ {
+        opex_ng <- heat_mmbtu * ng_price       # energy costs
+        opex_om <- ngboiler_om_high * capex    # o&m costs
+        
+        numerator   <- capex + ((opex_om + opex_ng) * discount_sum)
+        denominator <- heat_mmbtu * discount_sum
+        
+        numerator / denominator
+      }, 
+      str_detect(tech_scenario, "Scenario1Best|Scenario3Best") ~ {
+        capex_adj <- capex * (1 - capex_subsidy)
+        opex_elec <- change_in_electricity_demand_kwh * (elec_price * (1-elec_discount))
+        opex_om <- eboiler_om_low * capex
+        
+        numerator   <- capex_adj + ((opex_om + opex_elec) * discount_sum)
+        denominator <- heat_mmbtu * discount_sum
+        
+        numerator / denominator
+      }, 
+      str_detect(tech_scenario, "Scenario1Worst|Scenario3Worst") ~ {
+        capex_adj <- capex * (1 - capex_subsidy)
+        opex_elec <- change_in_electricity_demand_kwh * (elec_price * (1-elec_discount))
+        opex_om <- eboiler_om_high * capex
+        
+        numerator   <- capex_adj + ((opex_om + opex_elec) * discount_sum)
+        denominator <- heat_mmbtu * discount_sum
+        
+        numerator / denominator
+      }, 
+      str_detect(tech_scenario, "Scenario2Best|Scenario4Best") ~ {
+        capex_adj <- capex * (1 - capex_subsidy)
+        opex_elec <- change_in_electricity_demand_kwh * (elec_price * (1-elec_discount))
+        opex_om <- hthp_om_low * capex
+        
+        numerator   <- capex_adj + ((opex_om + opex_elec) * discount_sum)
+        denominator <- heat_mmbtu * discount_sum
+        
+        numerator / denominator
+      }, 
+      str_detect(tech_scenario, "Scenario2Worst|Scenario4Worst") ~ {
+        capex_adj <- capex * (1 - capex_subsidy)
+        opex_elec <- change_in_electricity_demand_kwh * (elec_price * (1-elec_discount))
+        opex_om <- hthp_om_high * capex
+        
+        numerator   <- capex_adj + ((opex_om + opex_elec) * discount_sum)
+        denominator <- heat_mmbtu * discount_sum
+        
+        numerator / denominator
+      }
+    )
+  }
+
+#### LCOH CALCULATION ####
+# Import parameters 
+param <- 
+  read_excel('state_fact_sheets/data/parameters.xlsx') %>%
+  filter(scenario == state)
 
 # --- Create Policy Grid ---
 policy_grid <- expand.grid(
@@ -218,15 +299,24 @@ policy_applied_df <-
   tidyr::crossing(tech_combined_df, policy_grid) %>%
   mutate(
     lcoh = lcoh_func(
-      capex, 
-      t,                 
+      param$r, 
+      param$elec_price,
+      param$ng_price,
+      param$t, 
+      param$ngboiler_om_high, 
+      param$ngboiler_om_low, 
+      param$eboiler_om_high, 
+      param$eboiler_om_low, 
+      param$hthp_om_high, 
+      param$hthp_om_low, 
+      ## tech scenario + calculations 
+      tech_scenario,
+      capex,
       heat_mmbtu,
-      r,                     
-      opex_labor,
       change_in_electricity_demand_kwh,
-      elec_price,
+      ## policy scenarios
       capex_subsidy, 
-      elec_discount
+      elec_discount 
     ), 
     
     policy_label = paste0("Capex: -", capex_subsidy * 100, "%, Elec: -", elec_discount * 100, "%"), 
@@ -252,10 +342,9 @@ county_lcoh_summary <-
     .groups = "drop"
   )
 
-
 #### DATA EXPORT ####
-writexl::write_xlsx(policy_applied_df, "state_fact_sheets/data/modified/state-data/MN/250818_facility_lcoh_results_mn.xlsx") 
-writexl::write_xlsx(facility_emissions_long_df, "state_fact_sheets/data/modified/state-data/MN/250815_facility_emissions_results_mn.xlsx") 
+writexl::write_xlsx(policy_applied_df, glue("state_fact_sheets/data/modified/state-data/{state}/facility_lcoh_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) 
+writexl::write_xlsx(facility_emissions_long_df, glue("state_fact_sheets/data/modified/state-data/{state}/facility_emissions_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) 
 
 # writexl::write_xlsx(county_emissions_summary, "state_fact_sheets/data/modified/state-data/MN/250818_county_emissions_results_mn.xlsx")
 # writexl::write_xlsx(county_lcoh_summary, "state_fact_sheets/data/modified/state-data/MN/250818_county_lcoh_results_mn.xlsx")
