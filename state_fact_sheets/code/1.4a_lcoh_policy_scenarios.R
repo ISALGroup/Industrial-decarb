@@ -15,6 +15,7 @@ library(writexl)
 library(dplyr)
 library(tidyr)
 library(stringr)
+library(janitor)
 library(glue)
 
 # Set state :) 
@@ -32,13 +33,13 @@ natgas_best <-
   tech_input_df %>%
   filter(tech_scenario == 'Baseline') %>%
   mutate(tech_scenario = 'BaselineBest', 
-         capex = (1.81 * heat_mmbtu * 293.071) / 8000)
+         capex = (1.81 * (heat_mmbtu/.9) * 293.071) / 8000)
 
 tech_input_df <- 
   tech_input_df %>%
   mutate(
     tech_scenario = if_else(tech_scenario == 'Baseline', 'BaselineWorst', tech_scenario),
-    capex = if_else(tech_scenario == 'BaselineWorst', (18.11 * heat_mmbtu * 293.071) / 8000, capex)
+    capex = if_else(tech_scenario == 'BaselineWorst', (18.11 * (heat_mmbtu/.75) * 293.071) / 8000, capex)
   ) %>%
   bind_rows(natgas_best)
     
@@ -222,7 +223,7 @@ lcoh_func <- function(
     ## Inputting different parameters for different tech scenarios 
     case_when(
       str_detect(tech_scenario, "BaselineWorst") ~ {
-        opex_ng <- heat_mmbtu * ng_price      # energy costs
+        opex_ng <- (heat_mmbtu/.75) * ng_price      # energy costs
         opex_om <- ngboiler_om_low * capex    # o&m costs
         
         numerator   <- capex + ((opex_om + opex_ng) * discount_sum)
@@ -231,7 +232,7 @@ lcoh_func <- function(
         numerator / denominator
       }, 
       str_detect(tech_scenario, "BaselineBest") ~ {
-        opex_ng <- heat_mmbtu * ng_price       # energy costs
+        opex_ng <- (heat_mmbtu/.9) * ng_price       # energy costs
         opex_om <- ngboiler_om_high * capex    # o&m costs
         
         numerator   <- capex + ((opex_om + opex_ng) * discount_sum)
@@ -296,7 +297,7 @@ policy_grid <- expand.grid(
 
 # --- Apply Policy Grid to Tech Scenarios ---
 policy_applied_df <- 
-  tidyr::crossing(tech_combined_df, policy_grid) %>%
+  tidyr::crossing(tech_input_df, policy_grid) %>%
   mutate(
     lcoh = lcoh_func(
       param$r, 
@@ -325,22 +326,33 @@ policy_applied_df <-
     )
   )
 
-# LCOH
-state_lcoh_summary <- 
-  policy_applied_df %>% 
-  group_by(state, sector, naics_code, naics_description, tech_scenario, policy_label) %>% 
-  summarise(
-    weighted_lcoh = sum(lcoh * heat_mmbtu, na.rm = TRUE) / sum(heat_mmbtu, na.rm = TRUE),
-    .groups = "drop"
-  )
+# State & County LCOH
+#### NEED TO FIX THIS
+# state_lcoh_summary <- 
+#   policy_applied_df %>% 
+#   group_by(state, sector, naics_code, naics_description, tech_scenario, policy_label) %>% 
+#   summarise(
+#     weighted_lcoh = sum(lcoh * heat_mmbtu, na.rm = TRUE) / sum(heat_mmbtu, na.rm = TRUE),
+#     .groups = "drop"
+#   )
+# 
+# county_lcoh_summary <- 
+#   policy_applied_df %>% 
+#   group_by(county_fips, sector, naics_code, naics_description, tech_scenario, policy_label) %>% 
+#   summarise(
+#     weighted_lcoh = sum(lcoh * heat_mmbtu, na.rm = TRUE) / sum(heat_mmbtu, na.rm = TRUE),
+#     .groups = "drop"
+#   )
 
-county_lcoh_summary <- 
-  policy_applied_df %>% 
-  group_by(county_fips, sector, naics_code, naics_description, tech_scenario, policy_label) %>% 
-  summarise(
-    weighted_lcoh = sum(lcoh * heat_mmbtu, na.rm = TRUE) / sum(heat_mmbtu, na.rm = TRUE),
-    .groups = "drop"
-  )
+#### check ####
+check <- 
+  policy_applied_df |>
+  filter(str_detect(tech_scenario, 'Baseline'))
+
+range(check$capex)
+range(check$heat_mmbtu/.75)
+range(check$heat_mmbtu/.9)
+
 
 #### DATA EXPORT ####
 writexl::write_xlsx(policy_applied_df, glue("state_fact_sheets/data/modified/state-data/{state}/facility_lcoh_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) 
