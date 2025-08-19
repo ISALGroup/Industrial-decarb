@@ -2,7 +2,7 @@
 # EMT
 # Figures for state memos
 
-# pulling code from other files to get all 4 figures in 1 file
+#### SET-UP ####
 library(readxl)
 library(writexl)
 library(dplyr)
@@ -11,16 +11,16 @@ library(tidyr)
 library(janitor)
 library(patchwork)
 library(stringr)
+library(glue)
 
-# Set working directory
-#setwd("~/Documents/Industrial_Decarbonization/Industrial-decarb")
+## SET STATE 
+state <- "MN"
 
-# ------ Pull in LCOH Policy and Emissions Results Data -------
 # pull in facility level file
-facility_level_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250818_facility_lcoh_results_mn.xlsx") 
+facility_lcoh_df <- read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/facility_lcoh_results_{state}.xlsx")) 
 
 # pull in the state emissions file
-state_emissions_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250815_state_emissions_results_mn_v3.xlsx") 
+state_emissions_df <- read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/state_emissions_results_{state}.xlsx")) 
 #state_lcoh_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250812_state_lcoh_results_mn.xlsx") didn't use
 
 # --------- EMISSIONS FIGURE -----------
@@ -46,7 +46,8 @@ scenario_labels <- c(
 )
 
 # Filter, average best/worst, convert to MtCO₂e
-emissions_df <- state_emissions_df %>%
+emissions_df <- 
+  state_emissions_df %>%
   filter(clean_grid_scenario_label %in% c("Current Grid Mix", "80% Clean Grid", "100% Clean Grid")) %>%
   mutate(
     scenario_base = str_remove(tech_scenario, "Best|Worst"),
@@ -63,6 +64,7 @@ emissions_df <- state_emissions_df %>%
       naics_description == 'Soybean and Other Oilseed Processing' ~ 'Soybeans'
     ), 
     industry_clean = factor(industry_clean,
+                            levels = df$category[order(df$value, decreasing = TRUE)]
                             levels = c("Pulp & Paper", "Ethyl Alcohol", "Beet Sugar", "Soybeans", "Fats & Oils"))
   ) %>%
   # just going with the best case for now 
@@ -105,7 +107,7 @@ ng_max <- 8.5
 
 # Prepare data for candlestick
 lcoh_tech_sector <- 
-  facility_level_df %>%
+  facility_lcoh_df %>%
   filter(
     policy_label == "No Policy",             # keep this filter if applicable
     !str_detect(tech_scenario, "Baseline")   # drop baseline scenario
@@ -173,18 +175,22 @@ technology_by_sector_lcoh_plot
 capex_levels <- c(0.3, 0.5, 1)
 elec_levels <- c(0.25, 0.5)
 
-policy_grid <- crossing(
+policy_grid <- 
+  crossing(
   capex_subsidy = capex_levels,
   elec_discount = elec_levels
 ) 
 
-scenario4_policy_df <- facility_level_df %>%
+scenario4_policy_df <- 
+  facility_lcoh_df %>%
   inner_join(policy_grid, by = c("capex_subsidy", "elec_discount")) 
 
-scenario4_no_policy_df <- facility_level_df %>% 
+scenario4_no_policy_df <- 
+  facility_lcoh_df %>% 
   filter(policy_label == "No Policy")
 
-scenario4_df <- rbind(scenario4_no_policy_df, scenario4_policy_df) %>% 
+scenario4_df <- 
+  rbind(scenario4_no_policy_df, scenario4_policy_df) %>% 
   filter(str_detect(tech_scenario, "Scenario4")) %>%
   mutate(
     industry_clean = case_when(
@@ -209,8 +215,8 @@ scenario4_df <- rbind(scenario4_no_policy_df, scenario4_policy_df) %>%
   )
 
 # Policy scenario x sector plot (S4 only) 
-lcoh_policy_combined_plot <- ggplot(
-  scenario4_df,
+lcoh_policy_combined_plot <- 
+  ggplot(scenario4_df,
   aes(x = policy_label, y = lcoh, color = industry_clean)) +
   
   # NG baseline band
@@ -252,11 +258,11 @@ ggsave("state_fact_sheets/outputs/state-fact-sheet-figures/MN/mn_emissions_plot_
        emissions_plot, 
        width = 8, height = 5, dpi = 300)
 
-ggsave("state_fact_sheets/outputs/state-fact-sheet-figures/MN/mn_LCOH_technology_plot_v2.png",
+ggsave("state_fact_sheets/outputs/state-fact-sheet-figures/MN/mn_LCOH_technology_plot_v3.png",
        technology_by_sector_lcoh_plot, 
        width = 8, height = 5, dpi = 300)
 
-ggsave("state_fact_sheets/outputs/state-fact-sheet-figures/MN/mn_LCOH_policy_scenario4_plot_v2.png",
+ggsave("state_fact_sheets/outputs/state-fact-sheet-figures/MN/mn_LCOH_policy_scenario4_plot_v3.png",
        lcoh_policy_combined_plot, 
        width = 8, height = 5, dpi = 300)
 
