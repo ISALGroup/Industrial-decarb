@@ -19,7 +19,7 @@ library(janitor)
 library(glue)
 
 # Set state :) 
-state <- "MN"
+state <- "IL"
 
 # Tech scenario input 
 tech_input_df <- 
@@ -92,7 +92,8 @@ grid_mix_df <-
   select(subregion = e_grid_subregion_acronym, current_fossil_share, current_clean_share)
 
 # --- Merge Inputs ---
-tech_combined_df <- tech_input_df %>%
+tech_combined_df <- 
+  tech_input_df %>%
   left_join(facility_info, by = "facility_name") %>%
   left_join(egrid_df, by = "subregion") 
 
@@ -102,7 +103,8 @@ tech_combined_df <- tech_input_df %>%
 grid_scenarios <- tibble(grid_clean_pct_scenario = c("Current Mix",seq(0.5, 1.0, by = 0.1)))
 
 # --- Expand to All Grid Scenarios ---
-facility_grid_long_df <- tidyr::crossing(tech_combined_df, grid_scenarios) %>%
+facility_grid_long_df <- 
+  tidyr::crossing(tech_combined_df, grid_scenarios) %>%
   left_join(grid_mix_df, by = "subregion") %>% 
   mutate(
     # Handle grid % as numeric
@@ -129,7 +131,8 @@ facility_grid_long_df <- tidyr::crossing(tech_combined_df, grid_scenarios) %>%
       pm25_kg_kwh * ((1 - grid_clean_pct_num) / current_fossil_share)
     ))
 
-facility_emissions_no_baseline <- facility_grid_long_df %>% 
+facility_emissions_no_baseline <- 
+  facility_grid_long_df %>% 
   filter(tech_scenario != "Baseline") %>% 
   mutate(
     # emissions formula 
@@ -139,8 +142,9 @@ facility_emissions_no_baseline <- facility_grid_long_df %>%
     emissions_change_kg_pm25 = (change_in_electricity_demand_kwh * scaled_pm25_factor),
   ) 
 
-facility_emissions_baseline <- facility_grid_long_df %>% 
-  filter(tech_scenario == "Baseline") %>% 
+facility_emissions_baseline <- 
+  facility_grid_long_df %>% 
+  filter(str_detect(tech_scenario, "Baseline")) %>% 
   mutate(
     emissions_total_t_co2e = baseline_co2e_emissions, 
     emissions_change_kg_nox = 0,
@@ -148,7 +152,8 @@ facility_emissions_baseline <- facility_grid_long_df %>%
     emissions_change_kg_pm25 = 0
   )
 
-facility_emissions_long_df <- rbind(facility_emissions_baseline, facility_emissions_no_baseline) %>% 
+facility_emissions_long_df <- 
+  rbind(facility_emissions_baseline, facility_emissions_no_baseline) %>% 
   # label for grid scenario
   mutate(clean_grid_scenario_label = if_else(
     is.na(grid_clean_pct_num),
@@ -162,7 +167,8 @@ facility_emissions_long_df <- rbind(facility_emissions_baseline, facility_emissi
          emissions_change_kg_so2, emissions_change_kg_pm25, clean_grid_scenario_label)
 
 # Emissions
-county_emissions_summary <- facility_emissions_long_df %>% 
+county_emissions_summary <- 
+  facility_emissions_long_df %>% 
   group_by(county_fips, sector, naics_code, naics_description, tech_scenario, clean_grid_scenario_label) %>% 
   summarise(
     elec_ghg_emissions        = sum(elec_ghg_emissions, na.rm = TRUE),
@@ -175,7 +181,8 @@ county_emissions_summary <- facility_emissions_long_df %>%
     .groups = "drop"
   ) 
 
-state_emissions_summary <- facility_emissions_long_df %>% 
+state_emissions_summary <- 
+  facility_emissions_long_df %>% 
   group_by(sector, naics_code, naics_description, tech_scenario, clean_grid_scenario_label) %>% 
   summarise(
     elec_ghg_emissions        = sum(elec_ghg_emissions, na.rm = TRUE),
@@ -297,7 +304,7 @@ policy_grid <- expand.grid(
 
 # --- Apply Policy Grid to Tech Scenarios ---
 policy_applied_df <- 
-  tidyr::crossing(tech_input_df, policy_grid) %>%
+  tidyr::crossing(tech_combined_df, policy_grid) %>%
   mutate(
     lcoh = lcoh_func(
       param$r, 
@@ -344,24 +351,15 @@ policy_applied_df <-
 #     .groups = "drop"
 #   )
 
-#### check ####
-check <- 
-  policy_applied_df |>
-  filter(str_detect(tech_scenario, 'Baseline'))
-
-range(check$capex)
-range(check$heat_mmbtu/.75)
-range(check$heat_mmbtu/.9)
-
-
 #### DATA EXPORT ####
 writexl::write_xlsx(policy_applied_df, glue("state_fact_sheets/data/modified/state-data/{state}/facility_lcoh_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) 
-writexl::write_xlsx(facility_emissions_long_df, glue("state_fact_sheets/data/modified/state-data/{state}/facility_emissions_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) 
+#writexl::write_xlsx(facility_emissions_long_df, glue("state_fact_sheets/data/modified/state-data/{state}/facility_emissions_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) 
 
 # writexl::write_xlsx(county_emissions_summary, "state_fact_sheets/data/modified/state-data/MN/250818_county_emissions_results_mn.xlsx")
 # writexl::write_xlsx(county_lcoh_summary, "state_fact_sheets/data/modified/state-data/MN/250818_county_lcoh_results_mn.xlsx")
-# 
-# writexl::write_xlsx(state_emissions_summary, "state_fact_sheets/data/modified/state-data/MN/250818_state_emissions_results_mn.xlsx")
+
+writexl::write_xlsx(state_emissions_summary, glue("state_fact_sheets/data/modified/state-data/{state}/state_emissions_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) 
+
 # writexl::write_xlsx(state_lcoh_summary, "state_fact_sheets/data/modified/state-data/MN/250818_state_lcoh_results_mn.xlsx")
 
 #writexl::write_xlsx(tech_combined_df, "state_fact_sheets/data/modified/state-data/MN/250811_facility_option_b_sample_mn.xlsx")
