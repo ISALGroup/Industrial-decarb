@@ -21,13 +21,13 @@ t <- 15 # years
 elec_price <- 0.092  # $/kWh
 
 lcoh_func <- 
-  function(capex, capex_share, elec_price, change_in_elec_demand_kwh, heat_mmbtu, t, r){
+  function(capex, capex_share, elec_price, change_in_electricity_demand_kwh, heat_mmbtu, t, r){
     capex_adj <- capex - (capex * capex_share)
     
     numerator <- capex_adj
     denominator <- 0
     
-    opex <- change_in_elec_demand_kwh * elec_price
+    opex <- change_in_electricity_demand_kwh * elec_price
     
     for (i in 1:t) {
       numerator <- numerator + (opex / (1 + r)^i)
@@ -50,7 +50,7 @@ scenario_4_input <-
   summarize(
     sector = min(sector), 
     capex = mean(capex), 
-    change_in_elec_demand_kwh = mean(change_in_elec_demand_kwh), 
+    change_in_electricity_demand_kwh = mean(change_in_electricity_demand_kwh), 
     heat_mmbtu = mean(heat_mmbtu)
   ) 
 
@@ -110,7 +110,7 @@ plot_data <-
   scenario_4_input |>
   # calculate LCOH by sector, inputting "x" as cost of electricity 
   tidyr::crossing(x = x_vals) |>
-  mutate(y = lcoh_func(capex, 0, x, change_in_elec_demand_kwh, heat_mmbtu, t, r))
+  mutate(y = lcoh_func(capex, 0, x, change_in_electricity_demand_kwh, heat_mmbtu, t, r))
   
 
 ggplot(plot_data, aes(x = x, y = y, color = naics_description)) +
@@ -180,7 +180,7 @@ capex_plot_data <-
                                                               '50% Capex Share', '100% Capex Share'), ordered = TRUE)
          ) |> # creating capex share scenarios
   tidyr::crossing(x = x_vals) |>
-  mutate(y = lcoh_func(capex, capex_share, x, change_in_elec_demand_kwh, heat_mmbtu, t, r))
+  mutate(y = lcoh_func(capex, capex_share, x, change_in_electricity_demand_kwh, heat_mmbtu, t, r))
 
 
 

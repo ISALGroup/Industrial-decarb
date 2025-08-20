@@ -2,6 +2,9 @@
 # EMT
 # Figures for state memos
 
+#### SET STATE  ####
+state <- "MI"
+
 #### SET-UP ####
 library(readxl)
 library(writexl)
@@ -13,14 +16,54 @@ library(patchwork)
 library(stringr)
 library(glue)
 
-## SET STATE 
-state <- "MN"
+# pull in the state emissions file & create ordered factor
+state_emissions_df <- 
+  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/state_emissions_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
+  mutate(
+    industry_clean = case_when(
+      naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
+      naics_description == 'Ethyl Alcohol Manufacturing' ~ 'Ethyl Alcohol', 
+      naics_description == 'Fats and Oils Refining and Blending' ~ 'Fats & Oils', 
+      naics_description == 'Paper Mills' ~ 'Pulp & Paper', 
+      naics_description == 'Paperboard Mills' ~ 'Pulp & Paper',
+      naics_description == 'Pulp Mills' ~ 'Pulp & Paper',
+      naics_description == 'Soybean and Other Oilseed Processing' ~ 'Soybeans', 
+      naics_description == 'Spice and Extract Manufacturing' ~ 'Spices', 
+      naics_description == 'Animal (except Poultry) Slaughtering' ~ 'Meat (non-poultry)', 
+      naics_description == 'Distilleries' ~ 'Distilleries'
+    )
+  )
 
+order_levels <- 
+  state_emissions_df %>%
+  filter(clean_grid_scenario_label == "Current Grid Mix" & tech_scenario == 'BaselineBest') %>%
+  group_by(industry_clean) %>%
+  summarise(total_emissions = sum(baseline_co2e_emissions, na.rm = TRUE)) %>%
+  arrange(desc(total_emissions)) %>%
+  pull(industry_clean)
+
+state_emissions_df <- 
+  state_emissions_df %>%
+  mutate(industry_clean = factor(industry_clean, levels = order_levels))
+  
 # pull in facility level file
-facility_lcoh_df <- read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/facility_lcoh_results_{state}.xlsx")) 
+facility_lcoh_df <- 
+  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/facility_lcoh_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
+  mutate(
+    industry_clean = case_when(
+      naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
+      naics_description == 'Ethyl Alcohol Manufacturing' ~ 'Ethyl Alcohol', 
+      naics_description == 'Fats and Oils Refining and Blending' ~ 'Fats & Oils', 
+      naics_description == 'Paper Mills' ~ 'Pulp & Paper', 
+      naics_description == 'Paperboard Mills' ~ 'Pulp & Paper',
+      naics_description == 'Pulp Mills' ~ 'Pulp & Paper',
+      naics_description == 'Soybean and Other Oilseed Processing' ~ 'Soybeans', 
+      naics_description == 'Spice and Extract Manufacturing' ~ 'Spices', 
+      naics_description == 'Animal (except Poultry) Slaughtering' ~ 'Meat (non-poultry)', 
+      naics_description == 'Distilleries' ~ 'Distilleries'
+    ), 
+    industry_clean = factor(industry_clean, levels = order_levels)) 
 
-# pull in the state emissions file
-state_emissions_df <- read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/state_emissions_results_{state}.xlsx")) 
 #state_lcoh_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250812_state_lcoh_results_mn.xlsx") didn't use
 
 # --------- EMISSIONS FIGURE -----------
@@ -54,21 +97,9 @@ emissions_df <-
     clean_grid_scenario_label = factor(
       clean_grid_scenario_label,
       levels = c("Current Grid Mix", "80% Clean Grid", "100% Clean Grid")
-    ), 
-    industry_clean = case_when(
-      naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
-      naics_description == 'Ethyl Alcohol Manufacturing' ~ 'Ethyl Alcohol', 
-      naics_description == 'Fats and Oils Refining and Blending' ~ 'Fats & Oils', 
-      naics_description == 'Paper Mills' ~ 'Pulp & Paper', 
-      naics_description == 'Paperboard Mills' ~ 'Pulp & Paper',
-      naics_description == 'Soybean and Other Oilseed Processing' ~ 'Soybeans'
-    ), 
-    industry_clean = factor(industry_clean,
-                            # SET
-                            levels = c("Pulp & Paper", "Ethyl Alcohol", "Beet Sugar", "Soybeans", "Fats & Oils"))
-  ) %>%
-  # just going with the best case for now 
-  filter(str_detect(tech_scenario, 'Best')|tech_scenario == 'Baseline') %>%
+    )) %>%
+  # just going with the best case for now, which also pulls BaselineBest
+  filter(str_detect(tech_scenario, 'Best')) %>%
   group_by(industry_clean, clean_grid_scenario_label, scenario_base) %>%
   summarise(emissions_Mt = sum(emissions_total_t_co2e)/1000000) 
 
@@ -99,11 +130,14 @@ sector_colors <- c(
   "Beet Sugar" = "#ef5645",
   "Ethyl Alcohol" = "#febc11", 
   "Fats & Oils" = "#047c91", 
-  "Soybeans" = "#c9bf9d"
+  "Soybeans" = "#c9bf9d", 
+  "Spices" = "#9370DB", 
+  "Meat (non-poultry)" = "#8B0000", 
+  "Distilleries" = "#D2691E"
 )
 
-ng_min <- 7
-ng_max <- 8.5
+ng_min <- min(facility_lcoh_df$lcoh[facility_lcoh_df$tech_scenario == 'BaselineBest'])
+ng_max <- max(facility_lcoh_df$lcoh[facility_lcoh_df$tech_scenario == 'BaselineWorst'])
 
 # Prepare data for candlestick
 lcoh_tech_sector <- 
@@ -120,18 +154,7 @@ lcoh_tech_sector <-
       scenario_number,
       levels = 1:4,
       labels = c("E-Boiler", "Air-Source HP", "E-Boiler + EE", "Air-Source HP + EE")
-    ),
-    industry_clean = case_when(
-      naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
-      naics_description == 'Ethyl Alcohol Manufacturing' ~ 'Ethyl Alcohol', 
-      naics_description == 'Fats and Oils Refining and Blending' ~ 'Fats & Oils', 
-      naics_description == 'Paper Mills' ~ 'Pulp & Paper',
-      naics_description == 'Paperboard Mills' ~ 'Pulp & Paper',
-      naics_description == 'Soybean and Other Oilseed Processing' ~ 'Soybeans'
-    ), 
-    industry_clean = factor(industry_clean,
-                            levels = c("Ethyl Alcohol", "Pulp & Paper", "Beet Sugar", "Soybeans", "Fats & Oils"))
-  ) 
+    ))
 
 # Technology scenario x sector plot 
 technology_by_sector_lcoh_plot <- 
@@ -143,8 +166,8 @@ technology_by_sector_lcoh_plot <-
            fill = "grey90", alpha = 0.3) +
   geom_hline(yintercept = ng_min, linetype = "dotted", color = "black", size = 0.5) +
   geom_hline(yintercept = ng_max, linetype = "dotted", color = "black", size = 0.5) +
-  annotate("text", x = -Inf, y = Inf, label = "LCOH range of a natural gas boiler",
-           hjust = -0.1, vjust = 46.5, size = 3, fontface = 'italic') +
+  # annotate("text", x = -Inf, y = Inf, label = "LCOH range of a natural gas boiler",
+  #          hjust = -0.1, vjust = 46.5, size = 3, fontface = 'italic') +
   
   # add boxplot 
   geom_boxplot(outlier.shape = NA, width = 0.3,
@@ -170,7 +193,7 @@ technology_by_sector_lcoh_plot <-
 
 technology_by_sector_lcoh_plot
 
-# --------- SCENARIO 4 LCOH POLICY MODELING -------------
+# --------- SCENARIO 4 LCOH POLICY FIGURE -------------
 # configure policy models
 capex_levels <- c(0.3, 0.5, 1)
 elec_levels <- c(0.25, 0.5)
@@ -193,16 +216,6 @@ scenario4_df <-
   rbind(scenario4_no_policy_df, scenario4_policy_df) %>% 
   filter(str_detect(tech_scenario, "Scenario4")) %>%
   mutate(
-    industry_clean = case_when(
-      naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
-      naics_description == 'Ethyl Alcohol Manufacturing' ~ 'Ethyl Alcohol', 
-      naics_description == 'Fats and Oils Refining and Blending' ~ 'Fats & Oils', 
-      naics_description == 'Paper Mills' ~ 'Pulp & Paper', 
-      naics_description == 'Paperboard Mills' ~ 'Pulp & Paper',
-      naics_description == 'Soybean and Other Oilseed Processing' ~ 'Soybeans'
-    ), 
-    industry_clean = factor(industry_clean,
-                            levels = c("Ethyl Alcohol", "Pulp & Paper", "Beet Sugar", "Soybeans", "Fats & Oils")),
     policy_label = factor(policy_label, levels = c(
       "No Policy",
       "Capex: -30%, Elec: -25%",
@@ -224,8 +237,8 @@ lcoh_policy_combined_plot <-
            fill = "grey90", alpha = 0.3) +
   geom_hline(yintercept = ng_min, linetype = "dotted", color = "black", size = 0.5) +
   geom_hline(yintercept = ng_max, linetype = "dotted", color = "black", size = 0.5) +
-  annotate("text", x = -Inf, y = Inf, label = "LCOH range of a natural gas boiler",
-           hjust = -0.1, vjust = 35.5, size = 3, fontface = 'italic') +
+  # annotate("text", x = -Inf, y = Inf, label = "LCOH range of a natural gas boiler",
+  #          hjust = -0.1, vjust = 35.5, size = 3, fontface = 'italic') +
   
   # Boxplots
   geom_boxplot(outlier.shape = NA, width = 0.3,
@@ -254,15 +267,15 @@ lcoh_policy_combined_plot
 
 
 # --------- SAVE PLOTS ----------
-ggsave("state_fact_sheets/outputs/state-fact-sheet-figures/MN/mn_emissions_plot_v2.png",
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_emissions_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
        emissions_plot, 
        width = 8, height = 5, dpi = 300)
 
-ggsave("state_fact_sheets/outputs/state-fact-sheet-figures/MN/mn_LCOH_technology_plot_v3.png",
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_LCOH_technology_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
        technology_by_sector_lcoh_plot, 
        width = 8, height = 5, dpi = 300)
 
-ggsave("state_fact_sheets/outputs/state-fact-sheet-figures/MN/mn_LCOH_policy_scenario4_plot_v3.png",
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_LCOH_policy_scenario4_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
        lcoh_policy_combined_plot, 
        width = 8, height = 5, dpi = 300)
 
