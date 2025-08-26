@@ -33,12 +33,14 @@ natgas_best <-
   tech_input_df %>%
   filter(tech_scenario == 'Baseline') %>%
   mutate(tech_scenario = 'BaselineBest', 
+         # best case natural gas 
          capex = (1.81 * (heat_mmbtu/.9) * 293.071) / 8000)
 
 tech_input_df <- 
   tech_input_df %>%
   mutate(
     tech_scenario = if_else(tech_scenario == 'Baseline', 'BaselineWorst', tech_scenario),
+    # worst case natural gas
     capex = if_else(tech_scenario == 'BaselineWorst', (18.11 * (heat_mmbtu/.75) * 293.071) / 8000, capex)
   ) %>%
   bind_rows(natgas_best)
