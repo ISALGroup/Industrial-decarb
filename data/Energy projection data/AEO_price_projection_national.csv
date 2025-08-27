@@ -1,6 +1,6 @@
 "Table 3.  Energy Prices by Sector and Source"
-"https://www.eia.gov/outlooks/aeo/data/browser/#/?id=3-AEO2025&cases=ref2025~hm2025~lm2025~highprice~lowprice~highogs~lowogs~highZTC~lowZTC~nocaa111~alttrnp~aeo2023ref&sourcekey=0"
-"Mon Aug 25 2025 13:56:23 GMT-0700 (Pacific Daylight Time)"
+"https://www.eia.gov/outlooks/aeo/data/browser/#/?id=3-AEO2025&region=1-0&cases=ref2025~hm2025~lm2025~highprice~lowprice~highogs~lowogs~highZTC~lowZTC~nocaa111~alttrnp~aeo2023ref&start=2023&end=2050&f=A&linechart=~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~&map=ref2025-d032025a.3-3-AEO2025.1-0&sourcekey=0"
+"Wed Aug 27 2025 09:27:46 GMT-0700 (Pacific Daylight Time)"
 "Source: U.S. Energy Information Administration"
 "",full name,api key,"units","2023","2024","2025","2026","2027","2028","2029","2030","2031","2032","2033","2034","2035","2036","2037","2038","2039","2040","2041","2042","2043","2044","2045","2046","2047","2048","2049","2050","Growth (2024-2050)"
 Residential,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
