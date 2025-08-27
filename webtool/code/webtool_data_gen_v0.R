@@ -14,32 +14,15 @@ library(janitor)
 
 # Tech scenario input 
 tech_input_df <- 
-  read_excel("LCOH modelling/output/longform_il_updatedfuelslist.xlsx") %>%
-  bind_rows(read_excel("LCOH modelling/output/longform_mi_updatedfuelslist - Copy.xlsx")) %>%
+  read_excel("LCOH modelling/output/longform_il.xlsx") %>%
+  bind_rows(read_excel("LCOH modelling/output/longform_mi.xlsx")) %>%
   mutate(facility_name = tolower(facility_name), 
          baseline_co2e_emissions = elec_ghg_emissions + noelec_ghg_emissions, 
          # USING WORST CASE FOR NATURAL GAS 
          capex = if_else(tech_scenario == 'Baseline', (18.11 * (heat_mmbtu/.75) * 293.071) / 8000, capex)) %>% 
-  filter(str_detect(tech_scenario, 'Best' | tech_scenario == 'Baseline')) %>%
+  # USING BEST CASE FOR ELECTRIC SCENARIOS 
+  filter(str_detect(tech_scenario, 'Best') | tech_scenario == 'Baseline') %>%
   select(-1, -facility_id, -opex) #removing for now til i get complete results from antoine
-
-# TEMPORARY: natgas capex calculation
-natgas_best <- 
-  tech_input_df %>%
-  filter(tech_scenario == 'Baseline') %>%
-  mutate(tech_scenario = 'BaselineBest', 
-         # best case natural gas 
-         capex = (1.81 * (heat_mmbtu/.9) * 293.071) / 8000)
-
-tech_input_df <- 
-  tech_input_df %>%
-  mutate(
-    tech_scenario = if_else(tech_scenario == 'Baseline', 'BaselineWorst', tech_scenario),
-    # worst case natural gas
-    capex = if_else(tech_scenario == 'Baseline', (18.11 * (heat_mmbtu/.75) * 293.071) / 8000, capex)
-  ) %>%
-  bind_rows(natgas_best)
-
 
 # Pull in lat and long from rlps file
 facility_lat_long <- 
@@ -92,4 +75,7 @@ grid_mix_df <-
 tech_combined_df <- 
   tech_input_df %>%
   left_join(facility_info, by = "facility_name") %>%
-  left_join(egrid_df, by = "subregion") 
+  left_join(egrid_df, by = "subregion") %>%
+  left_join(grid_mix_df, by = "subregion")
+
+#### Emissions #### 
