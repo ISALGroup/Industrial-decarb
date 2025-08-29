@@ -1,31 +1,39 @@
+
+#### SET-UP ####
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(glue)
+
 tech_combined_df <- read_excel('file_path')
 
-library(glue)
 
 #### EMISSIONS FUNCTION #### 
 # This takes user inputs & facility-level data to produce a facility-level emissions estimate 
 # Data can then be averaged by sector, technology scenario, and/or state to produce the visual layer
 
 emissions_func <- 
-  function(# User Inputs 
+  function(df, 
+           
+           # User Inputs 
            grid_clean_pct, 
            pollutant, #co2e, nox, so2, or pm25
-           emissions_range, 
-           total_or_relative, 
-           
-           # From facility data 
-           current_fossil_share, 
-           noelec_ghg_emissions,
-           change_in_electricity_demand_kwh) {
+           tech_scenario
+           #total_or_relative
+           ) {
       
-    # Scale grid emissions based on grid mix already present in tech_df
-    scaled_co2e_factor <- co2e_kg_kwh * ((1 - grid_clean_pct) / current_fossil_share)
+    in_col  <- paste0(pollutant, "_kg_kwh")
+
+    df <- 
+      df %>%
+      # Scale grid emissions based on grid mix already present in tech_df
+      mutate(
+        scaled_emissions_factor := .data[[in_col]] * ((1 - grid_clean_pct) / current_fossil_share)
+      ) %>%
+      
+      # calculate change in 
     
-    scaled_nox_factor <- nox_kg_kwh * ((1 - grid_clean_pct) / current_fossil_share)
-    
-    scaled_so2_factor <- so2_kg_kwh * ((1 - grid_clean_pct) / current_fossil_share)
-    
-    scaled_pm25_factor <- pm25_kg_kwh * ((1 - grid_clean_pct) / current_fossil_share)
   
   # Non-baseline
   facility_emissions_no_baseline <- facility_grid_df %>%
@@ -46,21 +54,85 @@ emissions_func <-
       emissions_change_kg_so2 = 0,
       emissions_change_kg_pm25 = 0
     )
+  }
+
+#### COST FUNCTION ####
+
+lcoh_func <- function(
+  ## User inputs 
+  tech_scenario,
+  capex_subsidy, 
+  elec_discount,
   
-  bind_rows(facility_emissions_baseline, facility_emissions_no_baseline) %>%
-    mutate(
-      clean_grid_scenario_label = if_else(
-        is.na(grid_clean_pct_num),
-        "Current Grid Mix",
-        paste0(round(grid_clean_pct_num * 100), "% Clean Grid")
-      )
-    ) %>%
-    select(
-      facility_id, facility_name, state, county_fips, latitude, longitude,
-      naics_code, naics_description, sector, subregion, tech_scenario, heat_mmbtu,
-      change_in_electricity_demand_kwh, current_fossil_share, current_clean_share,
-      grid_clean_pct_scenario, baseline_co2e_emissions, elec_ghg_emissions, noelec_ghg_emissions,
-      emissions_total_t_co2e, emissions_change_kg_nox, emissions_change_kg_so2,
-      emissions_change_kg_pm25, clean_grid_scenario_label
-    )
+  ## Variables from the facility-level dataset  
+  capex,
+  heat_mmbtu,
+  change_in_electricity_demand_kwh,
+  
+  ## Variables from the parameters dataset 
+  r, 
+  elec_price,
+  ng_price,
+  t, # for now, assume same lifetime across equipment, but we can change this by technology later 
+  # nat gas boiler assumptions
+  #t_ngboiler,
+  ngboiler_om_best, 
+  ngboiler_om_worst, 
+  # e-boiler assumptions
+  #t_eboiler, 
+  eboiler_om_best, 
+  eboiler_om_worst, 
+  # hp assumptions
+  #t_hthp, 
+  hthp_om_best, 
+  hthp_om_worst
+  ){
+  # time discounting formula 
+  discount_sum <- sum((1 + r)^-(1:t))
+  
+  ## Inputting different parameters for different tech scenarios 
+  case_when(
+    str_detect(tech_scenario, "Baseline") ~ {
+      opex_ng_worst <- (heat_mmbtu/.75) * ng_price      # energy costs
+      opex_om_worst <- ngboiler_om_worst * capex    # o&m costs
+      
+      opex_ng_best <- (heat_mmbtu/.9) * ng_price       # energy costs
+      opex_om_best <- ngboiler_om_best * capex    # o&m costs
+      
+      numerator_worst <- capex + ((opex_om_worst + opex_ng_worst) * discount_sum)
+      numerator_best <- capex + ((opex_om_best + opex_ng_best) * discount_sum)
+      
+      denominator <- heat_mmbtu * discount_sum
+      
+      mean((numerator_worst/denominator), (numerator_best/denominator))
+    }, 
+    str_detect(tech_scenario, "Scenario1|Scenario3") ~ {
+      capex_adj <- capex * (1 - capex_subsidy)
+      opex_elec <- change_in_electricity_demand_kwh * (elec_price * (1-elec_discount))
+      
+      opex_om_worst <- eboiler_om_worst * capex
+      opex_om_best <- eboiler_om_best * capex
+      
+      numerator_worst <- capex_adj + ((opex_om_worst + opex_elec) * discount_sum)
+      numerator_best <- capex_adj + ((opex_om_best + opex_elec) * discount_sum)
+      
+      denominator <- heat_mmbtu * discount_sum
+      
+      mean((numerator_worst/denominator), (numerator_best/denominator))
+    }, 
+    str_detect(tech_scenario, "Scenario2|Scenario4") ~ {
+      capex_adj <- capex * (1 - capex_subsidy)
+      opex_elec <- change_in_electricity_demand_kwh * (elec_price * (1-elec_discount))
+      
+      opex_om_worst <- hthp_om_worst * capex
+      opex_om_best <- hthp_om_best * capex
+      
+      numerator_worst <- capex_adj + ((opex_om_worst + opex_elec) * discount_sum)
+      numerator_best <- capex_adj + ((opex_om_best + opex_elec) * discount_sum)
+      
+      denominator <- heat_mmbtu * discount_sum
+      
+      mean((numerator_worst/denominator), (numerator_best/denominator))
+    }
+  )
 }

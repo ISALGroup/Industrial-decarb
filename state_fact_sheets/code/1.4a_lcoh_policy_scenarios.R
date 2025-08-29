@@ -206,16 +206,16 @@ lcoh_func <- function(
   t, # for now, assume same lifetime across equipment, but we can change this by technology later 
   # nat gas boiler assumptions
   #t_ngboiler,
-  ngboiler_om_high, 
-  ngboiler_om_low, 
+  ngboiler_om_best, 
+  ngboiler_om_worst, 
   # e-boiler assumptions
   #t_eboiler, 
-  eboiler_om_high, 
-  eboiler_om_low, 
+  eboiler_om_best, 
+  eboiler_om_worst, 
   # hp assumptions
   #t_hthp, 
-  hthp_om_high, 
-  hthp_om_low, 
+  hthp_om_best, 
+  hthp_om_worst, 
   
   ## tech scenario + calculations 
   tech_scenario,
@@ -233,7 +233,7 @@ lcoh_func <- function(
     case_when(
       str_detect(tech_scenario, "BaselineWorst") ~ {
         opex_ng <- (heat_mmbtu/.75) * ng_price      # energy costs
-        opex_om <- ngboiler_om_low * capex    # o&m costs
+        opex_om <- ngboiler_om_worst * capex    # o&m costs
         
         numerator   <- capex + ((opex_om + opex_ng) * discount_sum)
         denominator <- heat_mmbtu * discount_sum
@@ -242,7 +242,7 @@ lcoh_func <- function(
       }, 
       str_detect(tech_scenario, "BaselineBest") ~ {
         opex_ng <- (heat_mmbtu/.9) * ng_price       # energy costs
-        opex_om <- ngboiler_om_high * capex    # o&m costs
+        opex_om <- ngboiler_om_best * capex    # o&m costs
         
         numerator   <- capex + ((opex_om + opex_ng) * discount_sum)
         denominator <- heat_mmbtu * discount_sum
@@ -252,7 +252,7 @@ lcoh_func <- function(
       str_detect(tech_scenario, "Scenario1Best|Scenario3Best") ~ {
         capex_adj <- capex * (1 - capex_subsidy)
         opex_elec <- change_in_electricity_demand_kwh * (elec_price * (1-elec_discount))
-        opex_om <- eboiler_om_low * capex
+        opex_om <- eboiler_om_worst * capex
         
         numerator   <- capex_adj + ((opex_om + opex_elec) * discount_sum)
         denominator <- heat_mmbtu * discount_sum
@@ -262,7 +262,7 @@ lcoh_func <- function(
       str_detect(tech_scenario, "Scenario1Worst|Scenario3Worst") ~ {
         capex_adj <- capex * (1 - capex_subsidy)
         opex_elec <- change_in_electricity_demand_kwh * (elec_price * (1-elec_discount))
-        opex_om <- eboiler_om_high * capex
+        opex_om <- eboiler_om_best * capex
         
         numerator   <- capex_adj + ((opex_om + opex_elec) * discount_sum)
         denominator <- heat_mmbtu * discount_sum
@@ -272,7 +272,7 @@ lcoh_func <- function(
       str_detect(tech_scenario, "Scenario2Best|Scenario4Best") ~ {
         capex_adj <- capex * (1 - capex_subsidy)
         opex_elec <- change_in_electricity_demand_kwh * (elec_price * (1-elec_discount))
-        opex_om <- hthp_om_low * capex
+        opex_om <- hthp_om_worst * capex
         
         numerator   <- capex_adj + ((opex_om + opex_elec) * discount_sum)
         denominator <- heat_mmbtu * discount_sum
@@ -282,7 +282,7 @@ lcoh_func <- function(
       str_detect(tech_scenario, "Scenario2Worst|Scenario4Worst") ~ {
         capex_adj <- capex * (1 - capex_subsidy)
         opex_elec <- change_in_electricity_demand_kwh * (elec_price * (1-elec_discount))
-        opex_om <- hthp_om_high * capex
+        opex_om <- hthp_om_best * capex
         
         numerator   <- capex_adj + ((opex_om + opex_elec) * discount_sum)
         denominator <- heat_mmbtu * discount_sum
@@ -313,12 +313,12 @@ policy_applied_df <-
       param$elec_price,
       param$ng_price,
       param$t, 
-      param$ngboiler_om_high, 
-      param$ngboiler_om_low, 
-      param$eboiler_om_high, 
-      param$eboiler_om_low, 
-      param$hthp_om_high, 
-      param$hthp_om_low, 
+      param$ngboiler_om_best, 
+      param$ngboiler_om_worst, 
+      param$eboiler_om_best, 
+      param$eboiler_om_worst, 
+      param$hthp_om_best, 
+      param$hthp_om_worst, 
       ## tech scenario + calculations 
       tech_scenario,
       capex,
