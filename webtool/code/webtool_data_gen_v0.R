@@ -79,3 +79,15 @@ tech_combined_df <-
   left_join(grid_mix_df, by = "subregion")
 
 #### Emissions #### 
+
+web_emissions_df <- 
+  tech_combined_df %>%
+  pivot_longer(
+    cols = ends_with("_kg_kwh"),
+    names_to = "pollutant_type",
+    values_to = "emissions_kg_kwh"
+  )
+
+web_lcoh_df <- 
+  tech_combined_df %>%
+  
