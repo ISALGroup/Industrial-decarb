@@ -3,7 +3,7 @@
 # Figures for state memos
 
 #### SET STATE  ####
-state <- "MI"
+state <- "MN"
 
 #### SET-UP ####
 library(readxl)
@@ -18,7 +18,8 @@ library(glue)
 
 # pull in the state emissions file & create ordered factor
 state_emissions_df <- 
-  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/state_emissions_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
+  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/state_emissions_results_{state}_20250819.xlsx")) %>%
+  #read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/state_emissions_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
   mutate(
     industry_clean = case_when(
       naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
@@ -267,9 +268,9 @@ lcoh_policy_combined_plot
 
 
 # --------- SAVE PLOTS ----------
-ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_emissions_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
-       emissions_plot, 
-       width = 8, height = 5, dpi = 300)
+# ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_emissions_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
+#        emissions_plot, 
+#        width = 8, height = 5, dpi = 300)
 
 ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_LCOH_technology_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
        technology_by_sector_lcoh_plot, 
