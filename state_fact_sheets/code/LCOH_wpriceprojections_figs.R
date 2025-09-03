@@ -6,8 +6,10 @@ state <- "MN"
 #### SET-UP ####
 library(readxl)
 library(writexl)
+library(readr)
 library(dplyr)
 library(ggplot2)
+library(ggnewscale)
 library(tidyr)
 library(janitor)
 library(patchwork)
@@ -60,7 +62,7 @@ facility_lcoh_df <-
 
 #state_lcoh_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250812_state_lcoh_results_mn.xlsx") didn't use
 
-# --------- LCOH by Technology Scenario Figure --------------
+#### LCOH by Technology Scenario Figure --------------
 # Define sector colors
 sector_colors <- c(
   "Pulp & Paper" = "#6d7d33",
@@ -130,7 +132,7 @@ technology_by_sector_lcoh_plot <-
 
 technology_by_sector_lcoh_plot
 
-# --------- SCENARIO 4 LCOH POLICY FIGURE -------------
+#### SCENARIO 4 LCOH POLICY FIGURE -------------
 # configure policy models
 capex_levels <- c(0.3, 0.5, 1)
 elec_levels <- c(0.25, 0.5)
@@ -203,7 +205,7 @@ lcoh_policy_combined_plot <-
 lcoh_policy_combined_plot
 
 
-# --------- SAVE PLOTS ----------
+#### SAVE PLOTS ----------
 
 ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_LCOH.proj.price_technology_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
        technology_by_sector_lcoh_plot, 
@@ -213,6 +215,133 @@ ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_
        lcoh_policy_combined_plot, 
        width = 8, height = 5, dpi = 300)
 
+
+
+
+
+
+
+#### FUEL PRICE FIGS ####
+
+enc_fuelprices <- 
+  read_csv(glue("data/Energy projection data/AEO_price_projection_eastnorthcentral_edit.csv")) |>
+  filter(fuel_type %in% c('Natural Gas', 'Electricity') & projection_scenario == "Reference case") |>
+  select(fuel_type, units, as.character(2024:2050)) |>
+  pivot_longer(
+    cols = any_of(as.character(2024:2050)),
+    names_to = "year",
+    values_to = "price"
+  ) |>
+  mutate(
+    price = case_when(fuel_type == 'Electricity' ~ price / 293.07107, # Convert from $/mmbtu
+                      TRUE ~ price), 
+    units = case_when(fuel_type == 'Electricity' ~ "2024 $/kWh", 
+                      TRUE ~ units), 
+    region = "eastnorthcentral"
+  )
+
+wnc_fuelprices <- 
+  read_csv(glue("data/Energy projection data/AEO_price_projection_westnorthcentral_edit.csv")) |>
+  filter(fuel_type %in% c('Natural Gas', 'Electricity') & projection_scenario == "Reference case") |>
+  select(fuel_type, units, as.character(2024:2050)) |>
+  pivot_longer(
+    cols = any_of(as.character(2024:2050)),
+    names_to = "year",
+    values_to = "price"
+  ) |>
+  mutate(
+    price = case_when(fuel_type == 'Electricity' ~ price / 293.07107, # Convert from $/mmbtu
+                      TRUE ~ price), 
+    units = case_when(fuel_type == 'Electricity' ~ "2024 $/kWh", 
+                      TRUE ~ units), 
+    region = "westnorthcentral"
+  )
+
+param <- 
+  read_excel('state_fact_sheets/data/parameters.xlsx') %>%
+  select(scenario, elec_price, ng_price) |>
+  rename(state = scenario) |>
+  filter(state != "WI")
+
+ng_prices <- 
+  bind_rows(enc_fuelprices, wnc_fuelprices) |>
+  filter(fuel_type == 'Natural Gas')
+
+elec_prices <- 
+  bind_rows(enc_fuelprices, wnc_fuelprices) |>
+  filter(fuel_type == 'Electricity')
+
+## plots 
+
+#elec_price_plot <- 
+ggplot(elec_prices, aes(x = year, y = price, group = region, color = region)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 1) +
+  labs(
+    title = "Electricity Prices",
+    x = "Year",
+    y = "Price (2024 $/kWh)",
+    color = "Region"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    
+    # start a NEW color scale so we can have a second legend
+  new_scale_color() +
+
+  # horizontal reference lines from df2
+  geom_hline(
+    data =  param,
+    aes(yintercept = elec_price, color = state),
+    linewidth = 0.9,
+    linetype = "dashed",
+    alpha = 0.8,
+    show.legend = TRUE
+  ) +
+  scale_color_manual(
+    name   = "State",
+    values = c(
+      "IL" = "#FFD700", 
+      "MI" = "#FF7F0E",  
+      "MN" = "#9370DB"   
+    )
+  ) +
+  guides(color = guide_legend(override.aes = list(linetype = "dashed", linewidth = 1.2)))
+
+#ng_price_plot <- 
+ggplot(ng_prices, aes(x = year, y = price, group = region, color = region)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 1) +
+  labs(
+    title = "Nat Gas Prices",
+    x = "Year",
+    y = "Price (2024 $/MMBtu)",
+    color = "Region"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  
+  # start a NEW color scale so we can have a second legend
+  new_scale_color() +
+  
+  # horizontal reference lines from df2
+  geom_hline(
+    data =  param,
+    aes(yintercept = ng_price, color = state),
+    linewidth = 0.9,
+    linetype = "dashed",
+    alpha = 0.8,
+    show.legend = TRUE
+  ) +
+  scale_color_manual(
+    name   = "State",
+    values = c(
+      "IL" = "#FFD700", 
+      "MI" = "#FF7F0E",  
+      "MN" = "#9370DB"   
+    )
+  ) +
+  guides(color = guide_legend(override.aes = list(linetype = "dashed", linewidth = 1.2)))
 
 
 
