@@ -22,7 +22,7 @@ tech_input_df <-
          capex = if_else(tech_scenario == 'Baseline', (18.11 * (heat_mmbtu/.75) * 293.071) / 8000, capex)) %>% 
   # USING BEST CASE FOR ELECTRIC SCENARIOS 
   filter(str_detect(tech_scenario, 'Best') | tech_scenario == 'Baseline') %>%
-  select(-1, -facility_id, -opex) #removing for now til i get complete results from antoine
+  select(-1, -opex) #removing for now til i get complete results from antoine
 
 # Pull in lat and long from rlps file
 facility_lat_long <- 
@@ -36,8 +36,7 @@ facility_info <-
   clean_names() %>% 
   rename(naics_code = primary_naics) %>% 
   rename(naics_description = naics_title) %>% 
-  mutate(facility_name = tolower(facility_name)) %>% 
-  select(facility_name, facility_id, naics_code, naics_description, county_fips, subregion) %>% 
+  select(facility_id, naics_code, naics_description, county_fips, subregion) %>% 
   inner_join(facility_lat_long, by = "facility_id") %>% 
   mutate(
     sector = case_when(
@@ -61,33 +60,25 @@ egrid_df <-
   rename(subregion = e_grid_subregion_acronym) %>% 
   select(subregion, co2e_kg_kwh, nox_kg_kwh, so2_kg_kwh, pm25_kg_kwh)
 
-# Resource mix 
-grid_mix_df <- 
-  read_excel("state_fact_sheets/data/raw/egrid_summary_tables_rev2.xlsx", sheet = 3) %>%
-  clean_names() %>%
-  mutate(
-    current_fossil_share = coal + oil + gas + other_fossil,
-    current_clean_share = hydro + biomass + wind + solar + nuclear #removed geothermal for now due to E, close to 0
-  ) %>%
-  select(subregion = e_grid_subregion_acronym, current_fossil_share, current_clean_share)
-
 # --- Merge Inputs ---
 tech_combined_df <- 
   tech_input_df %>%
-  left_join(facility_info, by = "facility_name") %>%
-  left_join(egrid_df, by = "subregion") %>%
-  left_join(grid_mix_df, by = "subregion")
+  left_join(facility_info, by = "facility_id") %>%
+  left_join(egrid_df, by = "subregion") 
 
 #### Emissions #### 
 
 web_emissions_df <- 
-  tech_combined_df %>%
+  tech_combined_df |>
   pivot_longer(
     cols = ends_with("_kg_kwh"),
     names_to = "pollutant_type",
-    values_to = "emissions_kg_kwh"
-  )
+    names_pattern = "^(.*)_kg_kwh$",  
+    values_to = "grid_emissions_kg_kwh"
+  ) |>
+  select(-capex, -heat_mmbtu)
 
 web_lcoh_df <- 
   tech_combined_df %>%
+  select(-elec_ghg_emissions, -noelec_ghg_emissions, -baseline_co2e_emissions, -ends_with("_kg_kwh"))
   
