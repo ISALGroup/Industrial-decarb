@@ -1,34 +1,25 @@
 
+#### Functions for 2035 Webtool: Emissions & LCOH ####
+## Nate M
+## 2025-09-04
+
 #### SET-UP ####
 library(readxl)
+library(readr)
 library(dplyr)
 library(tidyr)
 library(stringr)
-library(glue)
-
-tech_combined_df <- read_excel('file_path')
 
 #### EMISSIONS FUNCTION #### 
 # This takes user inputs & facility-level data to produce a facility-level emissions estimate.  
-
-# You could apply this inside a dplyr pipe, e.g.:
-## 1. Filter dataset, per user input 
-## 2. Use function inside mutate() to calculate emissions outcome for each observation
-## 3a. Sum across all observations to get the total emissions for a given scenario (top bar). 
-## 3b. Group_by state/county to get the results for a pop-up box when a user clicks on a geographic area.
-
-# Filtering variables on the emissions dataset: 
-## tech_scenario --> Electrification scenario 
-## fuels --> Fuel type at the facility 
-## county_fips --> County
-## state --> State 
-## naics_code / sector --> Sector 
-## pollutant_type --> co2e, nox, so2, pm25 
+# It does *not* apply the filtering to the dataset, which must be done beforehand. 
 
 emissions_func <- 
   function(# From Emissions Dataset
+           baseline_co2e_emissions, # baseline co2e emissions
            grid_emissions_kg_kwh, # kg of emissions per kwh
            change_in_electricity_demand_kwh, # how much electricity demand changes under electrification
+           noelec_ghg_emissions, # Non-electrifiable emissions 
            
            # User Inputs 
            tech_scenario, # Which electrification scenario are we looking at? (Baseline, E-Boiler, etc.)
@@ -49,7 +40,7 @@ emissions_func <-
       }, 
       
       # When pollutant is not CO2e... (ignore for now) 
-      tech_scenario != "Baseline" ~ {
+      pollutant_type != 'co2e' & tech_scenario != "Baseline" ~ {
         emissions_change_kg = change_in_electricity_demand_kwh * scaled_grid.e_factor
         
         emissions_change_kg
@@ -61,87 +52,186 @@ emissions_func <-
       })
   }
 
+#### EMISSIONS EXAMPLE ####
+# Here is an example of how this could applied in a dplyr pipeline below. 
 
-#### COST FUNCTION ####
+emissions_df <- read_csv('webtool/data/webtool_emissions_data_20250904.csv')
 
-# This takes user inputs & facility-level data to produce a facility-level "levelized cost of heat" (LCOH) estimate.  
+# Say the user inputs Scenario1, 80% cleaner grid, co2e (only results we're working with right now)
+user_tech_scenario <- "Scenario1"
+user_grid_clean_pct <- .8
+user_pollutant_type <- "co2e"
 
+emissions_example_results <- 
+  emissions_df %>%
+  # Filter dataset, per user input 
+  filter(
+    tech_scenario == user_tech_scenario & 
+    pollutant_type == user_pollutant_type
+  ) %>%
+  # Use function inside mutate() to calculate emissions outcome for each observation
+  mutate(
+    emissions_out = 
+      emissions_func(
+        # dataset variables
+        baseline_co2e_emissions,
+        grid_emissions_kg_kwh, 
+        change_in_electricity_demand_kwh,
+        noelec_ghg_emissions,
+        
+        # user inputs 
+        user_tech_scenario,
+        user_grid_clean_pct,
+        user_pollutant_type
+      )
+  ) %>%
+  # (example) group_by state/county to get the results for a pop-up box when a user clicks on a geographic area.
+  # For now, emissions will display as totals. 
+  group_by(state, naics_code) %>%
+  summarize(
+    emissions_out = sum(emissions_out, na.rm = TRUE),
+  )
+
+# For reference -- filtering variables from the emissions dataset: 
+## tech_scenario --> Electrification scenario 
+## scenario_rank --> Are we looking at our "best" or "worst" case? 
+## fuels --> Fuel type at the facility 
+## county_fips --> County
+## state --> State 
+## naics_code / sector --> Sector 
+## pollutant_type --> *We'll just do CO2e for now*. (eventually: co2e, nox, so2, pm25) 
+
+#### LCOH FUNCTION ####
+
+# This takes user inputs & facility-level data to produce a facility-level "levelized cost of heat" (LCOH) estimate.
+# Works same as emissions function (see above comments). 
 
 lcoh_func <- function(
   ## User inputs 
-  tech_scenario,
-  capex_subsidy, 
-  elec_discount,
+  tech_scenario, # Electrification scenario (Baseline, E-Boiler, etc.)
+  capex_subsidy, # Proportion of capex subsidized by govt (should take value 0-1)
+  elec_discount, # Proportion of electricity price reduction (should take value 0-1)
   
-  ## Variables from the facility-level dataset  
-  capex,
-  heat_mmbtu,
-  change_in_electricity_demand_kwh,
+  ## Variables from the costs dataset  
+  capex,                                   # Up-front equipment cost
+  heat_mmbtu,                              # Quantity of heat used at the facility 
+  change_in_electricity_demand_kwh,        # Change in electricity demand under electrification 
   
   ## Variables from the parameters dataset 
-  r, 
-  elec_price,
-  ng_price,
-  t, # for now, assume same lifetime across equipment, but we can change this by technology later 
-  # nat gas boiler assumptions
-  #t_ngboiler,
-  ngboiler_om_best, 
-  ngboiler_om_worst, 
-  # e-boiler assumptions
-  #t_eboiler, 
-  eboiler_om_best, 
-  eboiler_om_worst, 
-  # hp assumptions
-  #t_hthp, 
-  hthp_om_best, 
-  hthp_om_worst
+  r,                   # Discount factor
+  elec_price,          # Electricity price 
+  ng_price,            # Natural gas price 
+  t,                   # Time horizon for LCOH calculation 
+  ngboiler_om_best,    # Best case natgas O&M costs
+  ngboiler_om_worst,   # Worst case natgas O&M costs
+  eboiler_om_best,     # Best case e-boiler O&M costs
+  eboiler_om_worst,    # Worst case e-boiler O&M costs
+  hthp_om_best,        # Best case heat pump O&M costs
+  hthp_om_worst       # Worst case heat pump O&M costs
   ){
-  # time discounting formula 
-  discount_sum <- sum((1 + r)^-(1:t))
+  
+  # Time discounting formula 
+  discount_sum <- (1 - (1 + r)^(-t)) / r
   
   ## Inputting different parameters for different tech scenarios 
   case_when(
+    
+    # Baseline LCOH
     str_detect(tech_scenario, "Baseline") ~ {
-      opex_ng_worst <- (heat_mmbtu/.75) * ng_price      # energy costs
-      opex_om_worst <- ngboiler_om_worst * capex    # o&m costs
+      opex_ng_worst <- (heat_mmbtu / 0.75) * ng_price
+      opex_ng_best  <- (heat_mmbtu / 0.90) * ng_price
+      opex_ng       <- (opex_ng_worst + opex_ng_best) / 2
       
-      opex_ng_best <- (heat_mmbtu/.9) * ng_price       # energy costs
-      opex_om_best <- ngboiler_om_best * capex    # o&m costs
+      opex_om_worst <- ngboiler_om_worst * capex
+      opex_om_best  <- ngboiler_om_best  * capex
+      opex_om       <- (opex_om_best + opex_om_worst) / 2
       
-      numerator_worst <- capex + ((opex_om_worst + opex_ng_worst) * discount_sum)
-      numerator_best <- capex + ((opex_om_best + opex_ng_best) * discount_sum)
-      
+      numerator   <- capex + (opex_om + opex_ng) * discount_sum
       denominator <- heat_mmbtu * discount_sum
-      
-      mean((numerator_worst/denominator), (numerator_best/denominator))
-    }, 
+      numerator / denominator
+    },
+    
+    # E-boiler LCOH
     str_detect(tech_scenario, "Scenario1|Scenario3") ~ {
       capex_adj <- capex * (1 - capex_subsidy)
-      opex_elec <- change_in_electricity_demand_kwh * (elec_price * (1-elec_discount))
+      opex_elec <- change_in_electricity_demand_kwh * (elec_price * (1 - elec_discount))
       
       opex_om_worst <- eboiler_om_worst * capex
-      opex_om_best <- eboiler_om_best * capex
+      opex_om_best  <- eboiler_om_best * capex
+      opex_om       <- (opex_om_best + opex_om_worst) / 2
       
-      numerator_worst <- capex_adj + ((opex_om_worst + opex_elec) * discount_sum)
-      numerator_best <- capex_adj + ((opex_om_best + opex_elec) * discount_sum)
-      
+      numerator   <- capex_adj + (opex_om + opex_elec) * discount_sum
       denominator <- heat_mmbtu * discount_sum
-      
-      mean((numerator_worst/denominator), (numerator_best/denominator))
-    }, 
+      numerator / denominator
+    },
+    
+    # Heat pump LCOH
     str_detect(tech_scenario, "Scenario2|Scenario4") ~ {
       capex_adj <- capex * (1 - capex_subsidy)
-      opex_elec <- change_in_electricity_demand_kwh * (elec_price * (1-elec_discount))
+      opex_elec <- change_in_electricity_demand_kwh * (elec_price * (1 - elec_discount))
       
       opex_om_worst <- hthp_om_worst * capex
-      opex_om_best <- hthp_om_best * capex
+      opex_om_best  <- hthp_om_best  * capex
+      opex_om       <- (opex_om_best + opex_om_worst) / 2
       
-      numerator_worst <- capex_adj + ((opex_om_worst + opex_elec) * discount_sum)
-      numerator_best <- capex_adj + ((opex_om_best + opex_elec) * discount_sum)
-      
+      numerator   <- capex_adj + (opex_om + opex_elec) * discount_sum
       denominator <- heat_mmbtu * discount_sum
-      
-      mean((numerator_worst/denominator), (numerator_best/denominator))
+      numerator / denominator
     }
   )
 }
+
+#### LCOH EXAMPLE #### 
+
+lcoh_df <- read_csv('webtool/data/webtool_lcoh_data_20250904.csv')
+
+# Hypothetical user inputs
+user_tech_scenario <- 'Scenario2'
+user_capex_subsidy <- .5
+user_elec_discount <- .25
+
+lcoh_example_results <- 
+  lcoh_df %>%
+  filter(
+    tech_scenario == user_tech_scenario
+  ) %>%
+  mutate(
+    lcoh_out = lcoh_func(
+      ## User inputs
+      user_tech_scenario,
+      user_capex_subsidy, 
+      user_elec_discount, 
+      
+      ## LCOH dataset variables 
+      capex,
+      heat_mmbtu,
+      change_in_electricity_demand_kwh,
+      # Parameters
+      r, 
+      elec_price,
+      ng_price,
+      t, 
+      ngboiler_om_best, 
+      ngboiler_om_worst, 
+      eboiler_om_best, 
+      eboiler_om_worst, 
+      hthp_om_best, 
+      hthp_om_worst
+    )  
+  ) %>%
+  # Example: summarizing for county results. LCOH should display as average. 
+  group_by(county_fips, naics_code) %>%
+  summarize(
+    lcoh_out = mean(lcoh_out, na.rm = TRUE),
+  )
+
+# Filtering variables on LCOH dataset: 
+## tech_scenario --> Electrification scenario 
+## fuels --> Fuel type at the facility 
+## county_fips --> County
+## state --> State 
+## naics_code / sector --> Sector 
+## (no need to filter by emissions type) 
+
+  
+      
