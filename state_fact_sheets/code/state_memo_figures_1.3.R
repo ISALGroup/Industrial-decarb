@@ -3,7 +3,7 @@
 # Figures for state memos
 
 #### SET STATE  ####
-state <- "MN"
+state <- "WI"
 
 #### SET-UP ####
 library(readxl)
@@ -18,8 +18,7 @@ library(glue)
 
 # pull in the state emissions file & create ordered factor
 state_emissions_df <- 
-  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/state_emissions_results_{state}_20250819.xlsx")) %>%
-  #read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/state_emissions_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
+  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/state_emissions_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
   mutate(
     industry_clean = case_when(
       naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
@@ -92,17 +91,18 @@ scenario_labels <- c(
 # Filter, average best/worst, convert to MtCO₂e
 emissions_df <- 
   state_emissions_df %>%
-  filter(clean_grid_scenario_label %in% c("Current Grid Mix", "80% Clean Grid", "100% Clean Grid")) %>%
+  filter(clean_grid_scenario_label %in% c("Current Grid Mix", "80% Cleaner Grid", "100% Cleaner Grid")) %>%
   mutate(
     scenario_base = str_remove(tech_scenario, "Best|Worst"),
     clean_grid_scenario_label = factor(
       clean_grid_scenario_label,
-      levels = c("Current Grid Mix", "80% Clean Grid", "100% Clean Grid")
+      levels = c("Current Grid Mix", "80% Cleaner Grid", "100% Cleaner Grid")
     )) %>%
   # just going with the best case for now, which also pulls BaselineBest
   filter(str_detect(tech_scenario, 'Best')) %>%
   group_by(industry_clean, clean_grid_scenario_label, scenario_base) %>%
-  summarise(emissions_Mt = sum(emissions_total_t_co2e)/1000000) 
+  # Will need to fix this for non-CO2e later 
+  summarise(emissions_Mt = sum(emissions_total)/1000000) 
 
 emissions_plot <- ggplot(emissions_df, aes(x = industry_clean, y = emissions_Mt, fill = scenario_base)) +
   geom_col(position = position_dodge(width = 0.8), width = 0.6) +
@@ -257,7 +257,7 @@ lcoh_policy_combined_plot <-
   theme_bw(base_size = 14) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
-    legend.position = c(0.8, 0.95),
+    legend.position = c(0.75, 0.95),
     legend.justification = c(0, 1),
     legend.text = element_text(size = 10),
     legend.title = element_text(size = 12),
@@ -268,9 +268,9 @@ lcoh_policy_combined_plot
 
 
 # --------- SAVE PLOTS ----------
-# ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_emissions_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
-#        emissions_plot, 
-#        width = 8, height = 5, dpi = 300)
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_emissions_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
+       emissions_plot,
+       width = 8, height = 5, dpi = 300)
 
 ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_LCOH_technology_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
        technology_by_sector_lcoh_plot, 

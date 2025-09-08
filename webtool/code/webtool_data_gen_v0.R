@@ -6,23 +6,49 @@
 #### SET-UP ####
 # Load Libraries
 library(readxl)
-library(writexl)
+library(readr)
 library(dplyr)
 library(tidyr)
 library(stringr)
 library(janitor)
+library(glue)
 
 # Tech scenario input 
-tech_input_df <- 
+tech_input_df.o <- 
   read_excel("LCOH modelling/output/longform_il.xlsx") %>%
   bind_rows(read_excel("LCOH modelling/output/longform_mi.xlsx")) %>%
+  select(-1, -opex) 
+
+natgas_best <- 
+  tech_input_df.o %>%
+  filter(tech_scenario == 'Baseline') %>%
+  mutate(tech_scenario = 'BaselineBest', 
+         # best case natural gas 
+         capex = 4733.79*(heat_mmbtu/54592)^0.8325)
+
+tech_input_df <- 
+  tech_input_df.o |>
+  mutate(
+    tech_scenario = if_else(tech_scenario == 'Baseline', 'BaselineWorst', tech_scenario),
+    # worst case natural gas
+    capex = if_else(tech_scenario == 'BaselineWorst', 25761.09*(heat_mmbtu/54592)^0.8325, capex)
+  ) %>%
+  bind_rows(natgas_best) %>%
   mutate(facility_name = tolower(facility_name), 
-         baseline_co2e_emissions = elec_ghg_emissions + noelec_ghg_emissions, 
-         # USING WORST CASE FOR NATURAL GAS 
-         capex = if_else(tech_scenario == 'Baseline', (18.11 * (heat_mmbtu/.75) * 293.071) / 8000, capex)) %>% 
-  # USING BEST CASE FOR ELECTRIC SCENARIOS 
-  filter(str_detect(tech_scenario, 'Best') | tech_scenario == 'Baseline') %>%
-  select(-1, -opex) #removing for now til i get complete results from antoine
+         facility_id = as.character(facility_id),
+         baseline_co2e_emissions = elec_ghg_emissions + noelec_ghg_emissions,
+         
+         scenario_rank = str_extract(tech_scenario, "(Best|Worst)$"),
+         tech_scenario = str_remove(tech_scenario, "(Best|Worst)$")
+         ) %>% 
+  # AVERAGING THE FUNCTION *INPUTS* ACROSS BEST & WORST CASE
+  group_by(facility_id, tech_scenario) %>%
+  summarize(
+    across(where(is.numeric), mean, na.rm = TRUE),
+    across(where(is.character), first),
+    .groups = "drop"
+  ) %>%
+  select(-scenario_rank)
 
 # Pull in lat and long from rlps file
 facility_lat_long <- 
@@ -44,7 +70,8 @@ facility_info <-
       str_starts(naics_code, "325") ~ "Chemicals",
       str_starts(naics_code, "322") ~ "Pulp & Paper",
       TRUE ~ "Other Manufacturing"
-    )
+    ), 
+    facility_id = as.character(facility_id)
   )
 
 # eGRID data
@@ -60,16 +87,19 @@ egrid_df <-
   rename(subregion = e_grid_subregion_acronym) %>% 
   select(subregion, co2e_kg_kwh, nox_kg_kwh, so2_kg_kwh, pm25_kg_kwh)
 
+param <- read_excel('webtool/data/parameters_20250904.xlsx')
+
 # --- Merge Inputs ---
 tech_combined_df <- 
   tech_input_df %>%
   left_join(facility_info, by = "facility_id") %>%
   left_join(egrid_df, by = "subregion") 
 
-#### Emissions #### 
+#### Create & Save Datasets #### 
 
 web_emissions_df <- 
   tech_combined_df |>
+  # Drawing pollutant type into a long format column for filtering by the webtool team. 
   pivot_longer(
     cols = ends_with("_kg_kwh"),
     names_to = "pollutant_type",
@@ -78,7 +108,13 @@ web_emissions_df <-
   ) |>
   select(-capex, -heat_mmbtu)
 
+write_csv(web_emissions_df, glue("webtool/data/webtool_emissions_data_{format(Sys.Date(), '%Y%m%d')}.csv")) 
+
 web_lcoh_df <- 
   tech_combined_df %>%
-  select(-elec_ghg_emissions, -noelec_ghg_emissions, -baseline_co2e_emissions, -ends_with("_kg_kwh"))
+  left_join(param, by = c('state' = 'scenario')) %>%
+  select(-elec_ghg_emissions, -noelec_ghg_emissions, -baseline_co2e_emissions, -ends_with("_kg_kwh")) 
+
+write_csv(web_lcoh_df, glue("webtool/data/webtool_lcoh_data_{format(Sys.Date(), '%Y%m%d')}.csv")) 
+
   
