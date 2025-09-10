@@ -18,7 +18,7 @@ library(glue)
 
 # pull in the state emissions file & create ordered factor
 state_emissions_df <- 
-  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/state_emissions_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
+  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/emissions_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
   mutate(
     industry_clean = case_when(
       naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
@@ -30,7 +30,9 @@ state_emissions_df <-
       naics_description == 'Soybean and Other Oilseed Processing' ~ 'Soybeans', 
       naics_description == 'Spice and Extract Manufacturing' ~ 'Spices', 
       naics_description == 'Animal (except Poultry) Slaughtering' ~ 'Meat (non-poultry)', 
-      naics_description == 'Distilleries' ~ 'Distilleries'
+      naics_description == 'Distilleries' ~ 'Distilleries', 
+      naics_description == 'Wet Corn Milling and Starch Manufacturing' ~ 'Wet Corn Milling', 
+      naics_description == 'Rendering and Meat Byproduct Processing' ~ 'Rendering' 
     )
   )
 
@@ -48,7 +50,7 @@ state_emissions_df <-
   
 # pull in facility level file
 facility_lcoh_df <- 
-  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/facility_lcoh_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
+  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/lcoh_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
   mutate(
     industry_clean = case_when(
       naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
@@ -60,7 +62,9 @@ facility_lcoh_df <-
       naics_description == 'Soybean and Other Oilseed Processing' ~ 'Soybeans', 
       naics_description == 'Spice and Extract Manufacturing' ~ 'Spices', 
       naics_description == 'Animal (except Poultry) Slaughtering' ~ 'Meat (non-poultry)', 
-      naics_description == 'Distilleries' ~ 'Distilleries'
+      naics_description == 'Distilleries' ~ 'Distilleries', 
+      naics_description == 'Wet Corn Milling and Starch Manufacturing' ~ 'Wet Corn Milling', 
+      naics_description == 'Rendering and Meat Byproduct Processing' ~ 'Rendering' 
     ), 
     industry_clean = factor(industry_clean, levels = order_levels)) 
 
@@ -129,12 +133,14 @@ emissions_plot
 sector_colors <- c(
   "Pulp & Paper" = "#6d7d33",
   "Beet Sugar" = "#ef5645",
-  "Ethyl Alcohol" = "#febc11", 
+  "Ethyl Alcohol" = "#2CA02C", 
   "Fats & Oils" = "#047c91", 
   "Soybeans" = "#c9bf9d", 
   "Spices" = "#9370DB", 
   "Meat (non-poultry)" = "#8B0000", 
-  "Distilleries" = "#D2691E"
+  "Distilleries" = "#D2691E", 
+  "Rendering" = "#8C564B",  
+  "Wet Corn Milling"    = "#febc11"   
 )
 
 ng_min <- min(facility_lcoh_df$lcoh[facility_lcoh_df$tech_scenario == 'BaselineBest'])
