@@ -18,7 +18,7 @@ library(glue)
 
 # pull in the state emissions file & create ordered factor
 state_emissions_df <- 
-  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/emissions_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
+  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_emissions_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
   mutate(
     industry_clean = case_when(
       naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
@@ -34,7 +34,8 @@ state_emissions_df <-
       naics_description == 'Wet Corn Milling and Starch Manufacturing' ~ 'Wet Corn Milling', 
       naics_description == 'Rendering and Meat Byproduct Processing' ~ 'Rendering' 
     )
-  )
+  ) #%>%
+  #filter(!industry_clean %in% c('Pulp & Paper', 'Ethyl Alcohol'))
 
 order_levels <- 
   state_emissions_df %>%
@@ -50,7 +51,7 @@ state_emissions_df <-
   
 # pull in facility level file
 facility_lcoh_df <- 
-  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/lcoh_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
+  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_lcoh_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
   mutate(
     industry_clean = case_when(
       naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
@@ -66,9 +67,8 @@ facility_lcoh_df <-
       naics_description == 'Wet Corn Milling and Starch Manufacturing' ~ 'Wet Corn Milling', 
       naics_description == 'Rendering and Meat Byproduct Processing' ~ 'Rendering' 
     ), 
-    industry_clean = factor(industry_clean, levels = order_levels)) 
-
-#state_lcoh_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250812_state_lcoh_results_mn.xlsx") didn't use
+    industry_clean = factor(industry_clean, levels = order_levels)) #%>%
+  #filter(!industry_clean %in% c('Pulp & Paper', 'Ethyl Alcohol'))
 
 # --------- EMISSIONS FIGURE -----------
 
