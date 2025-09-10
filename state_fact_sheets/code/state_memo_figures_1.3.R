@@ -1,9 +1,9 @@
-# August 6. 2025
-# EMT
+# September 9, 2025
+# EMT & NAM
 # Figures for state memos
 
 #### SET STATE  ####
-state <- "WI"
+state <- "MN"
 
 #### SET-UP ####
 library(readxl)
@@ -267,6 +267,63 @@ lcoh_policy_combined_plot <-
 lcoh_policy_combined_plot
 
 
+#### CAPEX FIGURE ####
+
+capex_data <- 
+  facility_lcoh_df |>
+  filter(policy_label == 'No Policy') |>
+  mutate(
+    scenario_rank = str_extract(tech_scenario, "(Best|Worst)$"),
+    tech_scenario = str_remove(tech_scenario, "(Best|Worst)$"), 
+    technology = case_when(
+      tech_scenario == 'Baseline' ~ 'NG Boiler', 
+      tech_scenario %in% c('Scenario1', 'Scenario3') ~ 'E-Boiler', 
+      tech_scenario %in% c('Scenario2', 'Scenario4') ~ 'ASHP'
+    ), 
+    tech_scenario = factor(tech_scenario, levels = c("NG Boiler", "E-Boiler", "ASHP")), 
+    capex = capex / 1000000
+  ) |>
+  select(facility_id, state, industry_clean, capex, technology, tech_scenario, scenario_rank)
+
+tech_colors <- c(
+  "ASHP"      = "#CC79A7", 
+  "E-Boiler"  = "#56B4E9",
+  "NG Boiler" = "#4D4D4D"  
+)
+
+# Capex Plot 
+capex_plot <-
+  ggplot(capex_data, aes(x = industry_clean, y = capex, fill = technology)) +
+  geom_boxplot(
+    outlier.shape = 21,       # filled circle with outline
+    outlier.size  = 1.8,
+    outlier.stroke = 0.25,
+    outlier.alpha = 0.8, 
+    width = 0.6,
+    position = position_dodge2(width = 1, preserve = "single", reverse = TRUE)
+  ) +
+  
+  scale_fill_manual(
+    values = tech_colors,
+    breaks = c("NG Boiler", "E-Boiler", "ASHP"),
+    limits = c("NG Boiler", "E-Boiler", "ASHP"),
+    name = "Technology" 
+  ) +
+  #scale_y_continuous(limits = c(0, 90)) +
+  
+  labs(x = NULL, y = "CAPEX ($ Millions)") +
+  theme_bw(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    legend.position = c(0.8, 0.95),
+    legend.justification = c(0, 1),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12),
+    legend.background = element_rect(color = "black", linewidth = 0.2)
+  )
+
+capex_plot
+
 # --------- SAVE PLOTS ----------
 ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_emissions_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
        emissions_plot,
@@ -280,7 +337,9 @@ ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_
        lcoh_policy_combined_plot, 
        width = 8, height = 5, dpi = 300)
 
-
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_capex_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
+       capex_plot, 
+       width = 8, height = 5, dpi = 300)
 
 
 

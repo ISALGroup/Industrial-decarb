@@ -7,7 +7,7 @@
 
 #### SET STATE ####
 # Set state :) 
-state <- "WI"
+state <- "MN"
 
 #### SET-UP ####
 # Load Libraries
