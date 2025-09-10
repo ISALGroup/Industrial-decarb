@@ -84,7 +84,7 @@ egrid_df <-
 tech_combined_df <- 
   tech_input_df %>%
   left_join(facility_info, by = "facility_id") %>%
-  left_join(egrid_df, by = "subregion") 
+  left_join(egrid_df, by = "subregion")
 
 #### EMISSIONS FUNCTION #### 
 emissions_func <- 
@@ -330,6 +330,6 @@ policy_applied_df <-
 
 
 #### DATA EXPORT ####
-writexl::write_xlsx(policy_applied_df, glue("state_fact_sheets/data/modified/state-data/{state}/facility_lcoh_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) 
+writexl::write_xlsx(policy_applied_df, glue("state_fact_sheets/data/modified/state-data/{state}/lcoh_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) 
 
-writexl::write_xlsx(state_emissions_summary, glue("state_fact_sheets/data/modified/state-data/{state}/state_emissions_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) 
+writexl::write_xlsx(state_emissions_summary, glue("state_fact_sheets/data/modified/state-data/{state}/emissions_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) 
