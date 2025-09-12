@@ -15,10 +15,12 @@ library(janitor)
 library(patchwork)
 library(stringr)
 library(glue)
+library(tidylog)
 
 # pull in the state emissions file & create ordered factor
 state_emissions_df <- 
-  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_emissions_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
+  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_emissions_20250910.xlsx")) %>%
+  #read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_emissions_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
   mutate(
     industry_clean = case_when(
       naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
@@ -34,8 +36,8 @@ state_emissions_df <-
       naics_description == 'Wet Corn Milling and Starch Manufacturing' ~ 'Wet Corn Milling', 
       naics_description == 'Rendering and Meat Byproduct Processing' ~ 'Rendering' 
     )
-  ) #%>%
-  #filter(!industry_clean %in% c('Pulp & Paper', 'Ethyl Alcohol'))
+  ) %>%
+  filter(!industry_clean %in% c('Pulp & Paper', 'Ethyl Alcohol'))
 
 order_levels <- 
   state_emissions_df %>%
@@ -51,7 +53,8 @@ state_emissions_df <-
   
 # pull in facility level file
 facility_lcoh_df <- 
-  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_lcoh_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
+  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_lcoh_20250910.xlsx")) %>%
+  #read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_lcoh_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
   mutate(
     industry_clean = case_when(
       naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
@@ -66,9 +69,9 @@ facility_lcoh_df <-
       naics_description == 'Distilleries' ~ 'Distilleries', 
       naics_description == 'Wet Corn Milling and Starch Manufacturing' ~ 'Wet Corn Milling', 
       naics_description == 'Rendering and Meat Byproduct Processing' ~ 'Rendering' 
-    ), 
-    industry_clean = factor(industry_clean, levels = order_levels)) #%>%
-  #filter(!industry_clean %in% c('Pulp & Paper', 'Ethyl Alcohol'))
+    )) %>%
+  filter(!industry_clean %in% c('Pulp & Paper', 'Ethyl Alcohol')) %>%
+  mutate(industry_clean = factor(industry_clean, levels = order_levels))
 
 # --------- EMISSIONS FIGURE -----------
 
@@ -108,7 +111,8 @@ emissions_df <-
   # Will need to fix this for non-CO2e later 
   summarise(emissions_Mt = sum(emissions_total)/1000000) 
 
-emissions_plot <- ggplot(emissions_df, aes(x = industry_clean, y = emissions_Mt, fill = scenario_base)) +
+emissions_plot <- 
+  ggplot(emissions_df, aes(x = industry_clean, y = emissions_Mt, fill = scenario_base)) +
   geom_col(position = position_dodge(width = 0.8), width = 0.6) +
   facet_wrap(~ clean_grid_scenario_label, nrow = 1) +
   labs(
