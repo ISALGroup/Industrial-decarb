@@ -48,7 +48,20 @@ tech_input_df <-
     across(where(is.character), first),
     .groups = "drop"
   ) %>%
-  select(-scenario_rank)
+  select(-scenario_rank) %>%
+  # Adding some dummies for fuel type 
+  mutate(
+    ng_dum = if_else(str_detect(fuels, 'Natural Gas'), 1, 0), 
+    biomass_dum = if_else(str_detect(fuels, 'Other Biomass Gases'), 1, 0), 
+    propane_dum = if_else(str_detect(fuels, 'Propane'), 1, 0), 
+    bituminous_dum = if_else(str_detect(fuels, 'Bituminous'), 1, 0), 
+    anthracite_dum = if_else(str_detect(fuels, 'Anthracite'), 1, 0), 
+    coalcoake_dum = if_else(str_detect(fuels, 'Coal Coke'), 1, 0), 
+    biomass_dum = if_else(str_detect(fuels, 'Other Biomass Gases'), 1, 0), 
+    distillate_dum = if_else(str_detect(fuels, 'Distillate Fuel Oil No. 2'), 1, 0),
+    tires_dum = if_else(str_detect(fuels, 'Tires'), 1, 0), 
+    wood_dum = if_else(str_detect(fuels, 'Wood and Wood Residuals (dry basis)'), 1, 0)
+  )
 
 # Pull in lat and long from rlps file
 facility_lat_long <- 
@@ -106,9 +119,12 @@ web_emissions_df <-
     names_pattern = "^(.*)_kg_kwh$",  
     values_to = "grid_emissions_kg_kwh"
   ) |>
-  select(-capex, -heat_mmbtu)
+  select(-capex, -heat_mmbtu, -facility_name, naics_description, -sector) |>
+  mutate(
+    
+  )
 
-write_csv(web_emissions_df, glue("webtool/data/webtool_emissions_data_{format(Sys.Date(), '%Y%m%d')}.csv")) 
+#write_csv(web_emissions_df, glue("webtool/data/webtool_emissions_data_{format(Sys.Date(), '%Y%m%d')}.csv")) 
 
 web_lcoh_df <- 
   tech_combined_df %>%
