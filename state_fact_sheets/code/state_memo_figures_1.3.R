@@ -1,9 +1,9 @@
-# August 6. 2025
-# EMT
+# September 9, 2025
+# EMT & NAM
 # Figures for state memos
 
 #### SET STATE  ####
-state <- "WI"
+state <- "MN"
 
 #### SET-UP ####
 library(readxl)
@@ -15,10 +15,12 @@ library(janitor)
 library(patchwork)
 library(stringr)
 library(glue)
+library(tidylog)
 
 # pull in the state emissions file & create ordered factor
 state_emissions_df <- 
-  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/state_emissions_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
+  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_emissions_20250910.xlsx")) %>%
+  #read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_emissions_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
   mutate(
     industry_clean = case_when(
       naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
@@ -30,9 +32,12 @@ state_emissions_df <-
       naics_description == 'Soybean and Other Oilseed Processing' ~ 'Soybeans', 
       naics_description == 'Spice and Extract Manufacturing' ~ 'Spices', 
       naics_description == 'Animal (except Poultry) Slaughtering' ~ 'Meat (non-poultry)', 
-      naics_description == 'Distilleries' ~ 'Distilleries'
+      naics_description == 'Distilleries' ~ 'Distilleries', 
+      naics_description == 'Wet Corn Milling and Starch Manufacturing' ~ 'Wet Corn Milling', 
+      naics_description == 'Rendering and Meat Byproduct Processing' ~ 'Rendering' 
     )
-  )
+  ) %>%
+  filter(!industry_clean %in% c('Pulp & Paper', 'Ethyl Alcohol'))
 
 order_levels <- 
   state_emissions_df %>%
@@ -48,7 +53,8 @@ state_emissions_df <-
   
 # pull in facility level file
 facility_lcoh_df <- 
-  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/facility_lcoh_results_{state}_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
+  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_lcoh_20250910.xlsx")) %>%
+  #read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_lcoh_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
   mutate(
     industry_clean = case_when(
       naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
@@ -60,11 +66,12 @@ facility_lcoh_df <-
       naics_description == 'Soybean and Other Oilseed Processing' ~ 'Soybeans', 
       naics_description == 'Spice and Extract Manufacturing' ~ 'Spices', 
       naics_description == 'Animal (except Poultry) Slaughtering' ~ 'Meat (non-poultry)', 
-      naics_description == 'Distilleries' ~ 'Distilleries'
-    ), 
-    industry_clean = factor(industry_clean, levels = order_levels)) 
-
-#state_lcoh_df <- read_excel("state_fact_sheets/data/modified/state-data/MN/250812_state_lcoh_results_mn.xlsx") didn't use
+      naics_description == 'Distilleries' ~ 'Distilleries', 
+      naics_description == 'Wet Corn Milling and Starch Manufacturing' ~ 'Wet Corn Milling', 
+      naics_description == 'Rendering and Meat Byproduct Processing' ~ 'Rendering' 
+    )) %>%
+  filter(!industry_clean %in% c('Pulp & Paper', 'Ethyl Alcohol')) %>%
+  mutate(industry_clean = factor(industry_clean, levels = order_levels))
 
 # --------- EMISSIONS FIGURE -----------
 
@@ -104,7 +111,8 @@ emissions_df <-
   # Will need to fix this for non-CO2e later 
   summarise(emissions_Mt = sum(emissions_total)/1000000) 
 
-emissions_plot <- ggplot(emissions_df, aes(x = industry_clean, y = emissions_Mt, fill = scenario_base)) +
+emissions_plot <- 
+  ggplot(emissions_df, aes(x = industry_clean, y = emissions_Mt, fill = scenario_base)) +
   geom_col(position = position_dodge(width = 0.8), width = 0.6) +
   facet_wrap(~ clean_grid_scenario_label, nrow = 1) +
   labs(
@@ -129,12 +137,14 @@ emissions_plot
 sector_colors <- c(
   "Pulp & Paper" = "#6d7d33",
   "Beet Sugar" = "#ef5645",
-  "Ethyl Alcohol" = "#febc11", 
+  "Ethyl Alcohol" = "#2CA02C", 
   "Fats & Oils" = "#047c91", 
   "Soybeans" = "#c9bf9d", 
   "Spices" = "#9370DB", 
   "Meat (non-poultry)" = "#8B0000", 
-  "Distilleries" = "#D2691E"
+  "Distilleries" = "#D2691E", 
+  "Rendering" = "#8C564B",  
+  "Wet Corn Milling"    = "#febc11"   
 )
 
 ng_min <- min(facility_lcoh_df$lcoh[facility_lcoh_df$tech_scenario == 'BaselineBest'])
@@ -267,6 +277,63 @@ lcoh_policy_combined_plot <-
 lcoh_policy_combined_plot
 
 
+#### CAPEX FIGURE ####
+
+capex_data <- 
+  facility_lcoh_df |>
+  filter(policy_label == 'No Policy') |>
+  mutate(
+    scenario_rank = str_extract(tech_scenario, "(Best|Worst)$"),
+    tech_scenario = str_remove(tech_scenario, "(Best|Worst)$"), 
+    technology = case_when(
+      tech_scenario == 'Baseline' ~ 'NG Boiler', 
+      tech_scenario %in% c('Scenario1', 'Scenario3') ~ 'E-Boiler', 
+      tech_scenario %in% c('Scenario2', 'Scenario4') ~ 'ASHP'
+    ), 
+    tech_scenario = factor(tech_scenario, levels = c("NG Boiler", "E-Boiler", "ASHP")), 
+    capex = capex / 1000000
+  ) |>
+  select(facility_id, state, industry_clean, capex, technology, tech_scenario, scenario_rank)
+
+tech_colors <- c(
+  "ASHP"      = "#CC79A7", 
+  "E-Boiler"  = "#56B4E9",
+  "NG Boiler" = "#4D4D4D"  
+)
+
+# Capex Plot 
+capex_plot <-
+  ggplot(capex_data, aes(x = industry_clean, y = capex, fill = technology)) +
+  geom_boxplot(
+    outlier.shape = 21,       # filled circle with outline
+    outlier.size  = 1.8,
+    outlier.stroke = 0.25,
+    outlier.alpha = 0.8, 
+    width = 0.6,
+    position = position_dodge2(width = 1, preserve = "single", reverse = TRUE)
+  ) +
+  
+  scale_fill_manual(
+    values = tech_colors,
+    breaks = c("NG Boiler", "E-Boiler", "ASHP"),
+    limits = c("NG Boiler", "E-Boiler", "ASHP"),
+    name = "Technology" 
+  ) +
+  #scale_y_continuous(limits = c(0, 90)) +
+  
+  labs(x = NULL, y = "CAPEX ($ Millions)") +
+  theme_bw(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    legend.position = c(0.8, 0.95),
+    legend.justification = c(0, 1),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12),
+    legend.background = element_rect(color = "black", linewidth = 0.2)
+  )
+
+capex_plot
+
 # --------- SAVE PLOTS ----------
 ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_emissions_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
        emissions_plot,
@@ -280,7 +347,9 @@ ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_
        lcoh_policy_combined_plot, 
        width = 8, height = 5, dpi = 300)
 
-
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_capex_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
+       capex_plot, 
+       width = 8, height = 5, dpi = 300)
 
 
 
