@@ -119,17 +119,14 @@ web_emissions_df <-
     names_pattern = "^(.*)_kg_kwh$",  
     values_to = "grid_emissions_kg_kwh"
   ) |>
-  select(-capex, -heat_mmbtu, -facility_name, naics_description, -sector) |>
-  mutate(
-    
-  )
+  select(-capex, -heat_mmbtu, -facility_name, -naics_description, -sector)
 
 #write_csv(web_emissions_df, glue("webtool/data/webtool_emissions_data_{format(Sys.Date(), '%Y%m%d')}.csv")) 
 
 web_lcoh_df <- 
   tech_combined_df %>%
   left_join(param, by = c('state' = 'scenario')) %>%
-  select(-elec_ghg_emissions, -noelec_ghg_emissions, -baseline_co2e_emissions, -ends_with("_kg_kwh")) 
+  select(-elec_ghg_emissions, -noelec_ghg_emissions, -baseline_co2e_emissions, -ends_with("_kg_kwh"), -naics_description, -sector) 
 
 write_csv(web_lcoh_df, glue("webtool/data/webtool_lcoh_data_{format(Sys.Date(), '%Y%m%d')}.csv")) 
 
