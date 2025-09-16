@@ -1,6 +1,10 @@
-# September 9, 2025
-# EMT & NAM
-# Figures for state memos
+# State Figures #
+## September 15, 2025
+## Takes output from lcoh_emissions_policy_scenarios, makes figures
+
+# Version notes: 
+## 1.4: using updated copollutant information 
+
 
 #### SET STATE  ####
 state <- "MN"
@@ -19,7 +23,7 @@ library(tidylog)
 
 # pull in the state emissions file & create ordered factor
 state_emissions_df <- 
-  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_emissions_20250910.xlsx")) %>%
+  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_emissions_copollutant_test.xlsx")) %>%
   #read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_emissions_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
   mutate(
     industry_clean = case_when(
@@ -36,14 +40,13 @@ state_emissions_df <-
       naics_description == 'Wet Corn Milling and Starch Manufacturing' ~ 'Wet Corn Milling', 
       naics_description == 'Rendering and Meat Byproduct Processing' ~ 'Rendering' 
     )
-  ) %>%
-  filter(!industry_clean %in% c('Pulp & Paper', 'Ethyl Alcohol'))
+  ) 
 
 order_levels <- 
   state_emissions_df %>%
-  filter(clean_grid_scenario_label == "Current Grid Mix" & tech_scenario == 'BaselineBest') %>%
+  filter(clean_grid_scenario_label == "Current Grid Mix" & tech_scenario == 'BaselineBest' & pollutant_type == 'co2e') %>%
   group_by(industry_clean) %>%
-  summarise(total_emissions = sum(baseline_co2e_emissions, na.rm = TRUE)) %>%
+  summarise(total_emissions = sum(total_emissions, na.rm = TRUE)) %>%
   arrange(desc(total_emissions)) %>%
   pull(industry_clean)
 
@@ -51,7 +54,7 @@ state_emissions_df <-
   state_emissions_df %>%
   mutate(industry_clean = factor(industry_clean, levels = order_levels))
   
-# pull in facility level file
+# pull in facility LCOH file
 facility_lcoh_df <- 
   read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_lcoh_20250910.xlsx")) %>%
   #read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_lcoh_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
@@ -73,10 +76,7 @@ facility_lcoh_df <-
   filter(!industry_clean %in% c('Pulp & Paper', 'Ethyl Alcohol')) %>%
   mutate(industry_clean = factor(industry_clean, levels = order_levels))
 
-# --------- EMISSIONS FIGURE -----------
-
-# configure state clean electricity targets
-clean_targets <- c("Current Grid Mix", 0.8, 1)
+#### EMISSIONS FIGURE SET-UP ####
 
 # Define scenarios and colors
 scenario_colors <- c(
@@ -95,29 +95,38 @@ scenario_labels <- c(
   "Scenario4"  = "4: ASHP + EE"
 )
 
+# Always order current -> more clean
+clean_grid_levels <- c("Current Grid Mix", "50% Cleaner Grid", "100% Cleaner Grid")
+
 # Filter, average best/worst, convert to MtCO₂e
 emissions_df <- 
   state_emissions_df %>%
-  filter(clean_grid_scenario_label %in% c("Current Grid Mix", "80% Cleaner Grid", "100% Cleaner Grid")) %>%
+  # Which grid scenarios to highlight? 
+  filter(clean_grid_scenario_label %in% clean_grid_levels) %>%
   mutate(
     scenario_base = str_remove(tech_scenario, "Best|Worst"),
     clean_grid_scenario_label = factor(
       clean_grid_scenario_label,
-      levels = c("Current Grid Mix", "80% Cleaner Grid", "100% Cleaner Grid")
+      levels = clean_grid_levels
     )) %>%
   # just going with the best case for now, which also pulls BaselineBest
   filter(str_detect(tech_scenario, 'Best')) %>%
-  group_by(industry_clean, clean_grid_scenario_label, scenario_base) %>%
-  # Will need to fix this for non-CO2e later 
-  summarise(emissions_Mt = sum(emissions_total)/1000000) 
+  group_by(industry_clean, clean_grid_scenario_label, scenario_base, pollutant_type) %>%
+  summarise(
+    total_emissions = sum(total_emissions)) %>%
+  ungroup() %>%
+  mutate(emissions_Mt = total_emissions/1000000) # for CO2e
 
-emissions_plot <- 
-  ggplot(emissions_df, aes(x = industry_clean, y = emissions_Mt, fill = scenario_base)) +
+#### EMISSIONS FIGURES ####
+co2e_plot <- 
+  emissions_df |>
+  filter(pollutant_type == 'co2e') |>
+  ggplot(aes(x = industry_clean, y = emissions_Mt, fill = scenario_base)) +
   geom_col(position = position_dodge(width = 0.8), width = 0.6) +
   facet_wrap(~ clean_grid_scenario_label, nrow = 1) +
   labs(
     x = NULL,
-    y = "Emissions (MtCO2e)",
+    y = "GHG Emissions (Mt CO2e)",
     fill = "Tech Scenario"
   ) +
   scale_fill_manual(values = scenario_colors, labels = scenario_labels) +
@@ -130,7 +139,74 @@ emissions_plot <-
     legend.background = element_rect(color = "black", linewidth = 0.2)
   )
 
-emissions_plot
+so2_plot <- 
+  emissions_df |>
+  filter(pollutant_type == 'so2') |>
+  ggplot(aes(x = industry_clean, y = total_emissions, fill = scenario_base)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.6) +
+  facet_wrap(~ clean_grid_scenario_label, nrow = 1) +
+  labs(
+    x = NULL,
+    y = expression("SO"[2]*" Emissions (t)"),
+    fill = "Tech Scenario"
+  ) +
+  scale_fill_manual(values = scenario_colors, labels = scenario_labels) +
+  #scale_y_continuous(limits = c(0, max(emissions_df$total_emissions) * 1.1), expand = c(0, 0)) + # dynamic limit
+  theme_bw(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 9), 
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 11),
+    legend.background = element_rect(color = "black", linewidth = 0.2)
+  )
+
+nox_plot <- 
+  emissions_df |>
+  filter(pollutant_type == 'nox') |>
+  ggplot(aes(x = industry_clean, y = total_emissions, fill = scenario_base)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.6) +
+  facet_wrap(~ clean_grid_scenario_label, nrow = 1) +
+  labs(
+    x = NULL,
+    y = expression("NO"[x]*" Emissions (t)"),
+    fill = "Tech Scenario"
+  ) +
+  scale_fill_manual(values = scenario_colors, labels = scenario_labels) +
+  #scale_y_continuous(limits = c(0, max(emissions_df$total_emissions) * 1.1), expand = c(0, 0)) + # dynamic limit
+  theme_bw(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 9), 
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 11),
+    legend.background = element_rect(color = "black", linewidth = 0.2)
+  )
+
+pm25_plot <- 
+  emissions_df |>
+  filter(pollutant_type == 'pm25') |>
+  ggplot(aes(x = industry_clean, y = total_emissions, fill = scenario_base)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.6) +
+  facet_wrap(~ clean_grid_scenario_label, nrow = 1) +
+  labs(
+    x = NULL,
+    y = expression("PM"[2.5]*" Emissions (t)"),
+    fill = "Tech Scenario"
+  ) +
+  scale_fill_manual(values = scenario_colors, labels = scenario_labels) +
+  #scale_y_continuous(limits = c(0, max(emissions_df$total_emissions) * 1.1), expand = c(0, 0)) + # dynamic limit
+  theme_bw(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 9), 
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 11),
+    legend.background = element_rect(color = "black", linewidth = 0.2)
+  )
+
+
+co2e_plot
+so2_plot
+nox_plot
+pm25_plot
 
 # --------- LCOH by Technology Scenario Figure --------------
 # Define sector colors
@@ -335,8 +411,20 @@ capex_plot <-
 capex_plot
 
 # --------- SAVE PLOTS ----------
-ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_emissions_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
-       emissions_plot,
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_co2e_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
+       co2e_plot,
+       width = 8, height = 5, dpi = 300)
+
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_so2_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
+       so2_plot,
+       width = 8, height = 5, dpi = 300)
+
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_nox_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
+       nox_plot,
+       width = 8, height = 5, dpi = 300)
+
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_pm25_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
+       pm25_plot,
        width = 8, height = 5, dpi = 300)
 
 ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_LCOH_technology_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
