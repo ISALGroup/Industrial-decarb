@@ -73,7 +73,7 @@ facility_lcoh_df <-
       naics_description == 'Wet Corn Milling and Starch Manufacturing' ~ 'Wet Corn Milling', 
       naics_description == 'Rendering and Meat Byproduct Processing' ~ 'Rendering' 
     )) %>%
-  filter(!industry_clean %in% c('Pulp & Paper', 'Ethyl Alcohol')) %>%
+  #filter(!industry_clean %in% c('Pulp & Paper', 'Ethyl Alcohol')) %>%
   mutate(industry_clean = factor(industry_clean, levels = order_levels))
 
 #### EMISSIONS FIGURE SET-UP ####
