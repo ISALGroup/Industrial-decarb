@@ -7,7 +7,7 @@
 
 
 #### SET STATE  ####
-state <- "MN"
+st <- "MI"
 
 #### SET-UP ####
 library(readxl)
@@ -23,8 +23,8 @@ library(tidylog)
 
 # pull in the state emissions file & create ordered factor
 state_emissions_df <- 
-  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_emissions_copollutant_test.xlsx")) %>%
-  #read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_emissions_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
+  #read_excel(glue("state_fact_sheets/data/modified/state-data/{st}/{st}_emissions_copollutant_test.xlsx")) %>%
+  read_excel(glue("state_fact_sheets/data/modified/state-data/{st}/{st}_emissions_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
   mutate(
     industry_clean = case_when(
       naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
@@ -56,8 +56,7 @@ state_emissions_df <-
   
 # pull in facility LCOH file
 facility_lcoh_df <- 
-  read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_lcoh_20250910.xlsx")) %>%
-  #read_excel(glue("state_fact_sheets/data/modified/state-data/{state}/{state}_lcoh_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
+  read_excel(glue("state_fact_sheets/data/modified/state-data/{st}/{st}_lcoh_{format(Sys.Date(), '%Y%m%d')}.xlsx")) %>%
   mutate(
     industry_clean = case_when(
       naics_description == 'Beet Sugar Manufacturing' ~ 'Beet Sugar', 
@@ -411,31 +410,31 @@ capex_plot <-
 capex_plot
 
 # --------- SAVE PLOTS ----------
-ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_co2e_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{st}/{st}_co2e_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
        co2e_plot,
        width = 8, height = 5, dpi = 300)
 
-ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_so2_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{st}/{st}_so2_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
        so2_plot,
        width = 8, height = 5, dpi = 300)
 
-ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_nox_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{st}/{st}_nox_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
        nox_plot,
        width = 8, height = 5, dpi = 300)
 
-ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_pm25_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{st}/{st}_pm25_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
        pm25_plot,
        width = 8, height = 5, dpi = 300)
 
-ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_LCOH_technology_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{st}/{st}_LCOH_technology_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
        technology_by_sector_lcoh_plot, 
        width = 8, height = 5, dpi = 300)
 
-ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_LCOH_policy_scenario4_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{st}/{st}_LCOH_policy_scenario4_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
        lcoh_policy_combined_plot, 
        width = 8, height = 5, dpi = 300)
 
-ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{state}/{state}_capex_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
+ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{st}/{st}_capex_plot_{format(Sys.Date(), '%Y%m%d')}.png"),
        capex_plot, 
        width = 8, height = 5, dpi = 300)
 
