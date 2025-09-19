@@ -9,7 +9,7 @@
 
 #### SET STATE ####
 # Set state :) 
-state <- "MN"
+st <- "IL"
 
 #### SET-UP ####
 # Load Libraries
@@ -24,15 +24,14 @@ library(glue)
 
 # Tech scenario input 
 tech_input_df <- 
-  #read_excel(glue("LCOH modelling/output/longform_{state}.xlsx")) %>%
-  read_excel('LCOH modelling/output/copollutant_test.xlsx') %>%
+  read_excel(glue("LCOH modelling/output/copollutant_longform_{st}.xlsx")) %>%
+  #read_excel('LCOH modelling/output/copollutant_test.xlsx') %>%
   mutate(facility_name = tolower(facility_name), 
          base_emissions_co2e = elec_ghg_emissions + noelec_ghg_emissions) %>% 
   rename(
     base_emissions_nox = `base_emissions_Nitrogen Oxides`,
     base_emissions_pm25 = `base_emissions_PM2.5 Primary (Filt + Cond)`, 
-    base_emissions_so2 = `base_emissions_Sulfur Dioxide`, 
-    so2_emissions = sox_emissions
+    base_emissions_so2 = `base_emissions_Sulfur Dioxide`
   ) %>%
   select(-1, -opex, -fuel_reduction) 
 
@@ -290,8 +289,8 @@ lcoh_func <- function(
 #### LCOH CALCULATION ####
 # Import parameters 
 param <- 
-  read_excel('state_fact_sheets/data/parameters.xlsx') %>%
-  filter(scenario == state)
+  read_csv('state_fact_sheets/data/parameters.csv') %>%
+  filter(state == st)
 
 # --- Create Policy Grid ---
 policy_grid <- expand.grid(
@@ -332,8 +331,6 @@ policy_applied_df <-
 
 
 #### DATA EXPORT ####
-writexl::write_xlsx(policy_applied_df, glue("state_fact_sheets/data/modified/state-data/{state}/{state}_lcoh_{format(Sys.Date(), '%Y%m%d')}.xlsx")) 
+writexl::write_xlsx(policy_applied_df, glue("state_fact_sheets/data/modified/state-data/{st}/{st}_lcoh_{format(Sys.Date(), '%Y%m%d')}.xlsx")) 
 
-writexl::write_xlsx(state_emissions_summary, glue("state_fact_sheets/data/modified/state-data/{state}/{state}_emissions_copollutant_test.xlsx")) 
-
-#writexl::write_xlsx(state_emissions_summary, glue("state_fact_sheets/data/modified/state-data/{state}/{state}_emissions_{format(Sys.Date(), '%Y%m%d')}.xlsx")) 
+writexl::write_xlsx(state_emissions_summary, glue("state_fact_sheets/data/modified/state-data/{st}/{st}_emissions_{format(Sys.Date(), '%Y%m%d')}.xlsx")) 

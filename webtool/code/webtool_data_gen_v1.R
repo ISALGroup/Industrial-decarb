@@ -1,7 +1,11 @@
 #### WEBTOOL DATA OUTPUT #### 
 
-# Version 1.0
+# Version 1
 # NAM
+## 2025-09-18
+
+# Version notes:
+# Updates the copollutant workflow, national level results, includes full state parameters 
 
 #### SET-UP ####
 # Load Libraries
@@ -38,7 +42,8 @@ tech_input_df <-
          base_emissions_co2e = elec_ghg_emissions + noelec_ghg_emissions,
          
          scenario_rank = str_extract(tech_scenario, "(Best|Worst)$"),
-         tech_scenario = str_remove(tech_scenario, "(Best|Worst)$")
+         tech_scenario = str_remove(tech_scenario, "(Best|Worst)$") 
+         
          ) %>% 
   rename(
     base_emissions_nox = `base_emissions_Nitrogen Oxides`,
@@ -65,7 +70,9 @@ tech_input_df <-
     biomass_dum = if_else(str_detect(fuels, 'Other Biomass Gases'), 1, 0), 
     distillate_dum = if_else(str_detect(fuels, 'Distillate Fuel Oil No. 2'), 1, 0),
     tires_dum = if_else(str_detect(fuels, 'Tires'), 1, 0), 
-    wood_dum = if_else(str_detect(fuels, 'Wood and Wood Residuals (dry basis)'), 1, 0)
+    wood_dum = if_else(str_detect(fuels, 'Wood and Wood Residuals (dry basis)'), 1, 0), 
+    
+    across(where(is.numeric), ~ ifelse(is.nan(.x), NA, .x))
   )
 
 # Pull in lat and long from rlps file
@@ -105,7 +112,7 @@ egrid_df <-
   rename(subregion = e_grid_subregion_acronym) %>% 
   select(subregion, co2e_kg_kwh, nox_kg_kwh, so2_kg_kwh, pm25_kg_kwh)
 
-param <- read_excel('webtool/data/parameters_20250904.xlsx')
+param <- read_csv('state_fact_sheets/data/parameters.csv')
 
 # --- Merge Inputs ---
 tech_combined_df <- 
@@ -123,15 +130,31 @@ web_emissions_df <-
     names_to = "pollutant_type",
     names_pattern = "^(.*)_kg_kwh$",  
     values_to = "grid_emissions_kg_kwh"
-  ) |>
-  select(-capex, -heat_mmbtu, -facility_name, -naics_description, -sector)
+  ) %>%
+  mutate(
+    # make one emissions variable, calibrated to copollutant & scenario
+    facility_emissions = case_when(
+      pollutant_type == 'co2e' & str_detect(tech_scenario, 'Baseline') ~ base_emissions_co2e, 
+      pollutant_type == 'nox' & str_detect(tech_scenario, 'Baseline') ~ base_emissions_nox, 
+      pollutant_type == 'so2' & str_detect(tech_scenario, 'Baseline') ~ base_emissions_so2, 
+      pollutant_type == 'pm25' & str_detect(tech_scenario, 'Baseline') ~ base_emissions_pm25,
+      
+      pollutant_type == 'co2e' & str_detect(tech_scenario, 'Scenario') ~ noelec_ghg_emissions, 
+      pollutant_type == 'nox' & str_detect(tech_scenario, 'Scenario') ~ nox_emissions, 
+      pollutant_type == 'so2' & str_detect(tech_scenario, 'Scenario')  ~ so2_emissions, 
+      pollutant_type == 'pm25' & str_detect(tech_scenario, 'Scenario') ~ pm25_emissions
+    )
+  ) %>%
+  select(-capex, -heat_mmbtu, -contains('base'), -elec_ghg_emissions, -noelec_ghg_emissions, 
+         -nox_emissions, -so2_emissions, -pm25_emissions, -contains('match'), -fuel_reduction)
 
-#write_csv(web_emissions_df, glue("webtool/data/webtool_emissions_data_{format(Sys.Date(), '%Y%m%d')}.csv")) 
+write_csv(web_emissions_df, glue("webtool/data/webtool_emissions_data_{format(Sys.Date(), '%Y%m%d')}.csv")) 
 
 web_lcoh_df <- 
   tech_combined_df %>%
-  left_join(param, by = c('state' = 'scenario')) %>%
-  select(-elec_ghg_emissions, -noelec_ghg_emissions, -base_emissions_co2e, -ends_with("_kg_kwh"), -naics_description, -sector) 
+  left_join(param, by = c('state')) %>%
+  select(-elec_ghg_emissions, -noelec_ghg_emissions, -contains('match'), -contains('emissions'), 
+         -ends_with("_kg_kwh"), -naics_description, -sector, -fuel_reduction, -nei_id) 
 
 write_csv(web_lcoh_df, glue("webtool/data/webtool_lcoh_data_{format(Sys.Date(), '%Y%m%d')}.csv")) 
 
