@@ -99,7 +99,11 @@ parameters_names = list(params_treated.keys())
 objectives = {'y1' : {'type' : 'flow', 'name' : 'Product',
                       'attribute' : 'mass_flow_rate', 'value' : 100}}
 
-
+def heat_demand_objfunc(flows, units, heat_demand_value):
+    heat_demand = calc_heat_demand(flows, units)
+    delta_heat_demand = heat_demand - heat_demand_value
+    return delta_heat_demand
+    
 auto = True
 
 if auto:
@@ -180,9 +184,10 @@ if auto:
                 delta = abs(y_attr - objectives[objective_name]['value'])/objectives[objective_name]['value']
                 obj_values.append(delta)
         ### You can put heat demand here
-        heat_demand = calc_heat_demand(results1, results2)
-        delta_heat_demand = abs(10000 - heat_demand)/10000
+        delta_heat_demand = heat_demand_objfunc(results1, results2, 1000000)
         obj_values.append(delta_heat_demand)
+        
+        
         return {'objectives' : obj_values}
 
 
