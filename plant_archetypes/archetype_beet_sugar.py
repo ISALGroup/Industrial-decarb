@@ -705,7 +705,7 @@ def granulation(centrifugal_sugar_flow, coeff):
     final_sugar_T = (final_sugar_heat + sucrose_amount*Cp_sucrose*T_ref + water_in_final_sugar*Cp_water_liquid*T_ref)/(sucrose_amount*Cp_sucrose + water_in_final_sugar*Cp_water_liquid)
 
     return [{'name' : 'Final sugar', 'components' : ['water','sucrose'], 'composition': [1 - coeff['Final sugar purity'],coeff['Final sugar purity']], 'mass_flow_rate' : water_in_final_sugar+sucrose_amount,
-                     'flow_type': 'Process flow', 'temperature' : final_sugar_T, 'pressure':1 , 'heat_flow_rate' :final_sugar_heat ,'In or out' : 'Out', 'Set calc' : False, 'Set shear' : False},
+                     'flow_type': 'Product', 'temperature' : final_sugar_T, 'pressure':1 , 'heat_flow_rate' :final_sugar_heat ,'In or out' : 'Out', 'Set calc' : False, 'Set shear' : False},
             {'name' : 'Exhaust (Granulator)', 'components' : ['water','Air'], 'composition': [water_in_exhaust/exhaust_mass,air_required/exhaust_mass], 'mass_flow_rate' : exhaust_mass,
                      'flow_type': 'Exhaust', 'temperature' : coeff['Exhaust temperature'], 'pressure':1 , 'heat_flow_rate' :exhaust_heat ,'In or out' : 'Out', 'Set calc' : False, 'Set shear' : False},
             {'name' : 'Steam (Granulator)', 'components' : ['water'], 'composition': [1], 'mass_flow_rate' : steam_amount,
@@ -817,7 +817,7 @@ def drying_and_palletizing(pressed_pulp_flow, coeff):
     T_out = fsolve(exhaust_T, 200)
 
     return [{'name' : 'Final pulp', 'components' : ['water','pulp'], 'composition': [1 - coeff['Final pulp purity'], coeff['Final pulp purity']], 'mass_flow_rate' : water_in_final_pulp+pulp_amount,
-                     'flow_type': 'Process flow', 'temperature' : 25, 'pressure':1 , 'heat_flow_rate' :0 ,'In or out' : 'Out', 'Set calc' : False, 'Set shear' : False},
+                     'flow_type': 'Product', 'temperature' : 25, 'pressure':1 , 'heat_flow_rate' :0 ,'In or out' : 'Out', 'Set calc' : False, 'Set shear' : False},
             {'name' : 'Exhaust (Pulp drying)', 'components' : ['water','Air'], 'composition': [water_in_exhaust/(water_in_exhaust+air_required),air_required/(water_in_exhaust+air_required)], 'mass_flow_rate' : water_in_exhaust+air_required,
                      'flow_type': 'Exhaust', 'temperature' : T_out, 'pressure':1 , 'heat_flow_rate' :heat_exhaust ,'In or out' : 'Out', 'Set calc' : False, 'Set shear' : False},
             {'name' : 'Fuel (Pulp drying)', 'components' : ['Natural gas'], 'composition': [1], 'mass_flow_rate' : 0,
