@@ -58,13 +58,14 @@ def transform_row(row):
     if param_name:
         transformed_object = {'type' : obj_type, 'name' : element, 'attribute' : param, 
                           'coefficient' : param_name, 'min': min_val, 'max' : max_val, 
-                          'initial' : init_val}
+                          'default' : init_val}
     else:
         transformed_object = {'type' : obj_type, 'name' : element, 'attribute' : param, 
-                           'min': min_val, 'max' : max_val, 'initial' : init_val}
+                           'min': min_val, 'max' : max_val, 'default' : init_val}
     
     
     return transformed_object
+
 
 ### The parameters with min, max and initial values are transformed into a search space here
 
