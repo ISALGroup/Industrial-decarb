@@ -123,11 +123,12 @@ if auto:
             if parameter_i['type'] == 'flow':
                 param_index = find_Flow_index(parameter_i['name'], instance_flows)
                 if parameter_i['attribute'] == 'composition':
-                    component_ind = instance_flows[param_index].components.index(parameter_i['coefficient'])
-                    instance_units[param_index].composition[component_ind] = parameter_values[name]
+                    component_ind = instance_flows[param_index].attributes['components'].index(parameter_i['coefficient'])
+                    instance_flows[param_index].attributes['composition'][component_ind] = parameter_values[name]
                 
                 else:
-                    setattr(instance_flows[param_index], parameter_i['attribute'], parameter_values[name])
+                    instance_flows[param_index].attributes[ parameter_i['attribute']] = parameter_values[name]
+
                     
         ## To do the same for units
             if parameter_i['type'] == 'unit':
@@ -180,7 +181,7 @@ if auto:
                 obj_values.append(delta)
         ### You can put heat demand here
         heat_demand = calc_heat_demand(results1, results2)
-        delta_heat_demand = abs(10000 - heat_demand)/heat_demand
+        delta_heat_demand = abs(10000 - heat_demand)/10000
         obj_values.append(delta_heat_demand)
         return {'objectives' : obj_values}
 
