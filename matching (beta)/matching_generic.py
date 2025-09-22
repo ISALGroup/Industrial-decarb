@@ -136,10 +136,11 @@ if auto:
 
                     
         ## To do the same for units
-            if parameter_i['type'] == 'unit':
+            if parameter_i['type'] == 'Unit':
                 param_index = find_Unit_index(parameter_i['name'], instance_units)
+                #print(parameter_values[name])
                 if parameter_i['attribute'] == 'coefficient':
-                    instance_units[param_index].coefficients[parameter_i['coefficient_name']] = parameter_values[name]
+                    instance_units[param_index].coefficients[parameter_i['coefficient']] = parameter_values[name]
                 else:
                     setattr(instance_units[param_index], parameter_i['attribute'], parameter_values[name])
                 
