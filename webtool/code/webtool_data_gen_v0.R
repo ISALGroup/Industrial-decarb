@@ -15,8 +15,7 @@ library(glue)
 
 # Tech scenario input 
 tech_input_df.o <- 
-  read_excel("LCOH modelling/output/longform_il.xlsx") %>%
-  bind_rows(read_excel("LCOH modelling/output/longform_mi.xlsx")) %>%
+  read_excel("LCOH modelling/output/copollutant_longform_national.xlsx") %>%
   select(-1, -opex) 
 
 natgas_best <- 
@@ -36,16 +35,22 @@ tech_input_df <-
   bind_rows(natgas_best) %>%
   mutate(facility_name = tolower(facility_name), 
          facility_id = as.character(facility_id),
-         baseline_co2e_emissions = elec_ghg_emissions + noelec_ghg_emissions,
+         base_emissions_co2e = elec_ghg_emissions + noelec_ghg_emissions,
          
          scenario_rank = str_extract(tech_scenario, "(Best|Worst)$"),
          tech_scenario = str_remove(tech_scenario, "(Best|Worst)$")
          ) %>% 
+  rename(
+    base_emissions_nox = `base_emissions_Nitrogen Oxides`,
+    base_emissions_pm25 = `base_emissions_PM2.5 Primary (Filt + Cond)`, 
+    base_emissions_so2 = `base_emissions_Sulfur Dioxide`
+  ) %>%
+  
   # AVERAGING THE FUNCTION *INPUTS* ACROSS BEST & WORST CASE
   group_by(facility_id, tech_scenario) %>%
   summarize(
-    across(where(is.numeric), mean, na.rm = TRUE),
-    across(where(is.character), first),
+    across(where(is.numeric), \(x) mean(x, na.rm = TRUE)),
+    across(where(is.character), \(x) first(x)),
     .groups = "drop"
   ) %>%
   select(-scenario_rank) %>%
@@ -126,7 +131,7 @@ web_emissions_df <-
 web_lcoh_df <- 
   tech_combined_df %>%
   left_join(param, by = c('state' = 'scenario')) %>%
-  select(-elec_ghg_emissions, -noelec_ghg_emissions, -baseline_co2e_emissions, -ends_with("_kg_kwh"), -naics_description, -sector) 
+  select(-elec_ghg_emissions, -noelec_ghg_emissions, -base_emissions_co2e, -ends_with("_kg_kwh"), -naics_description, -sector) 
 
 write_csv(web_lcoh_df, glue("webtool/data/webtool_lcoh_data_{format(Sys.Date(), '%Y%m%d')}.csv")) 
 
