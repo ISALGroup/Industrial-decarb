@@ -90,7 +90,7 @@ tech_combined_df <-
 #   group_by(sector) |>
 #   summarise(n_facilities = n_distinct(facility_id))
 
-#### LCOH DATA WORK ####
+#### LCOH DATA WORK & SET-UP ####
 
 lcoh_func <- function(
     ## parameters
@@ -188,8 +188,8 @@ lcoh_func <- function(
 
 # Import parameters 
 param <- 
-  read_excel('state_fact_sheets/data/parameters.xlsx') %>%
-  filter(scenario == 'WI')
+  read_csv('state_fact_sheets/data/parameters.csv') %>%
+  filter(state == 'WI')
 
 # --- Create Policy Grid ---
 policy_grid <- expand.grid(
@@ -243,15 +243,25 @@ facility_lcoh_df <-
     )) #|>
   #mutate(industry_clean = factor(industry_clean, levels = order_levels))
 
-#### SCENARIO 4 LCOH FIGURE - DOTS #####
+
+ng_min <- min(facility_lcoh_df$lcoh[facility_lcoh_df$tech_scenario == 'BaselineBest'])
+ng_max <- max(facility_lcoh_df$lcoh[facility_lcoh_df$tech_scenario == 'BaselineWorst'])
+
+sector_colors <- c(
+  "Pulp & Paper" = "#6d7d33",
+  "Ethanol+" = "#febc11", 
+  "Food & Beverage" = "#8B0000"
+)
+
+#### SCENARIO 4 LCOH FIGURE  #####
 
 # select policy scenarios to show 
 fig_policies <- c(
   'No Policy',
-  'Capex: -30%, Elec: -25%', 
-  'Capex: -50%, Elec: -25%', 
-  'Capex: -100%, Elec: -25%', 
-  'Capex: -30%, Elec: -50%', 
+  'Capex: -50%, Elec: -0%', 
+  'Capex: -100%, Elec: -0%', 
+  'Capex: -0%, Elec: -25%', 
+  'Capex: -0%, Elec: -50%', 
   'Capex: -50%, Elec: -50%', 
   'Capex: -100%, Elec: -50%'
   )
@@ -264,16 +274,6 @@ scenario4_df <-
     policy_label = factor(policy_label, levels = fig_policies),
     sector = if_else(sector == 'Chemicals', "Ethanol+", sector)
   ) 
-  
-
-ng_min <- min(facility_lcoh_df$lcoh[facility_lcoh_df$tech_scenario == 'BaselineBest'])
-ng_max <- max(facility_lcoh_df$lcoh[facility_lcoh_df$tech_scenario == 'BaselineWorst'])
-
-sector_colors <- c(
-  "Pulp & Paper" = "#6d7d33",
-  "Ethanol+" = "#febc11", 
-  "Food & Beverage" = "#8B0000"
-)
 
 # Policy scenario x sector plot (S4 only) 
 lcoh_policy_combined_plot <- 
@@ -295,12 +295,12 @@ lcoh_policy_combined_plot <-
   # ) +
   
   # add boxplot 
-  geom_boxplot(outlier.shape = NA, width = 0.3,
+  geom_boxplot(outlier.shape = 1, width = 0.3,
                position = position_dodge(width = 0.5)) +
   
   
   scale_color_manual(values = sector_colors) +
-  scale_y_continuous(limits = c(5, 20)) +
+  scale_y_continuous(limits = c(5, 21)) +
   
   labs(
     y = "Levelized Cost of Heat ($/MMBtu)",
@@ -331,7 +331,8 @@ elec_plot_df <-
          policy_label == 'No Policy') |>
   
   # Summarize at the sector-scenario level. 
-  group_by(sector, tech_scenario) |>
+  group_by(#sector, 
+           tech_scenario) |>
   summarize(
     sector = min(sector), 
     capex = mean(capex), 
@@ -364,7 +365,8 @@ elec_plot_df <-
       capex_subsidy, 
       elec_discount 
       ), 
-    sector = if_else(sector == 'Chemicals', "Ethanol+", sector)
+    sector = if_else(sector == 'Chemicals', "Ethanol+", sector), 
+    x = x*100
     ) |>
   # average across best and worst case scenarios to get the sector-level outcome
   group_by(sector, x) |>
@@ -441,71 +443,88 @@ ggsave("state_fact_sheets/outputs/state-fact-sheet-figures/WI/WI_LCOHvElec.png",
        lcoh_v_elec_plot,
        width = 8, height = 5, dpi = 300)
 
-# # Flipped axes
-# ggplot(elec_plot_df, aes(x = lcoh, y = x, color = sector)) +
-#   geom_line(size = 1) +
-#   
-#   # NG baseline 
-#   
-#   ## We'll just so the max estimate 
-#   # annotate("rect", xmin = -Inf, xmax = Inf, ymin = ng_min, ymax = ng_max,
-#   #          fill = "grey90", alpha = 0.3) +
-#   #geom_hline(yintercept = ng_min, linetype = "dotted", color = "black", size = 0.5) +
-#   
-#   geom_vline(xintercept = ng_max, linetype = "dotted", color = "black", size = 0.5) +
-#   annotate("text",
-#            label = "LCOH of a natural gas boiler (max)",
-#            x = ng_max + .5, y = .01,
-#            size = 3,
-#            fontface = 'italic') +
-#   
-#   geom_hline(yintercept = param$elec_price,
-#              linetype = "dotted",
-#              color = "black",
-#              size = 0.5) +
-#   annotate("text",
-#            label = "WI Price",
-#            x = 5, y = param$elec_price + .0035,
-#            size = 3,
-#            fontface = 'italic') +
-#   
-#   geom_hline(yintercept = 0.041,
-#              linetype = "dotted",
-#              color = sector_colors[1],
-#              size = 0.5) +
-#   annotate("text",
-#            label = "Cost Parity Price (Pulp & Paper)",
-#            x = 5, y = 0.0405 + .012,
-#            size = 3,
-#            fontface = 'italic') +
-#   
-#   geom_hline(yintercept = 0.039,
-#              linetype = "dotted",
-#              color = sector_colors[2],
-#              size = 0.5) +
-#   
-#   geom_hline(yintercept = 0.034,
-#              linetype = "dotted",
-#              color = sector_colors[3],
-#              size = 0.5) +
-#   
-#   scale_color_manual(values = sector_colors) +
-#   
-#   labs(
-#     x = "Levelized Cost of Heat ($/MMBtu)",
-#     y = "Cost of Electricity ($/kWH)",
-#     color = "Sector") +
-#   
-#   theme_bw(base_size = 14) +
-#   theme(
-#     legend.position = c(0.95, 0.95),
-#     legend.justification = c(0, 1),
-#     legend.text = element_text(size = 10),
-#     legend.title = element_text(size = 11), 
-#     legend.background = element_rect(
-#       color = "black",   
-#       linewidth = 0.2    
-#     )
-#   )
-# 
-# 
+#### LCOH V ELEC V2 ####
+
+lcoh_v_elec_plot_v2 <- 
+  ggplot() +
+  # Main LCOH curve
+  geom_line(data = elec_plot_df,
+            aes(x = x, y = lcoh, color = "Heat Pump + EE", linetype = "Heat Pump + EE"),
+            size = 1) +
+  
+  # NG Boiler reference line
+  geom_hline(aes(yintercept = ng_max,
+                 color = "NG Boiler (max)",
+                 linetype = "NG Boiler (max)"),
+             size = 0.75) +
+  
+  # Other vlines not in legend
+  geom_vline(xintercept = param$elec_price * 100, color = "#FFBF00", size = 0.5) +
+  geom_vline(xintercept = 0.0405 * 100, color = "#FFBF00", linetype = "longdash", size = 0.75) +
+  
+  # Reverse x-axis
+  scale_x_reverse() +
+  
+  # Unified legend with manual scales
+  scale_color_manual(
+    name = NULL,
+    values = c(
+      "Heat Pump + EE" = "#8FB339",
+      "NG Boiler (max)" = "grey50"
+    )
+  ) +
+  scale_linetype_manual(
+    name = NULL,
+    values = c(
+      "Heat Pump + EE" = "solid",
+      "NG Boiler (max)" = "solid"
+    )
+  ) +
+  
+  labs(
+    y = "Levelized Cost of Heat ($/MMBtu)",
+    x = "Cost of Electricity (¢/kWH)"
+  ) +
+  
+  theme_bw(base_size = 14) +
+  theme(
+    legend.position = c(0.75, 0.95),
+    legend.justification = c(0, 1),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 11),
+    legend.background = element_rect(
+      color = "black",
+      linewidth = 0.2
+    )
+  )
+
+ggsave("state_fact_sheets/outputs/state-fact-sheet-figures/WI/WI_LCOHvElec_v2.png",
+       lcoh_v_elec_plot_v2,
+       width = 8, height = 5, dpi = 300)
+
+
+
+
+
+#### EMISSIONS FIGURE ####
+
+emissions_func <- 
+  function(
+    # From emissions dataset
+    facility_emissions, # facility emissions
+    grid_emissions_kg_kwh, # kg of emissions per kwh
+    change_in_electricity_demand_kwh, # how much electricity demand changes under electrification
+    
+    # User input
+    grid_clean_pct_scenario # What % cleaner is the grid? should take a value from 0-1
+  ) {
+    
+    # Scale the grid emissions (kg per kwh) to be more clean (or the same, depending on what the user selects). 
+    scaled_grid.e_factor <- grid_emissions_kg_kwh * (1-grid_clean_pct_scenario)
+    
+    
+    # emissions = the increase in emissions from the grid from electricity demand + non-electrifiable emissions at the facility 
+    total_emissions_t = (change_in_electricity_demand_kwh * scaled_grid.e_factor) / 1000 + facility_emissions
+    
+    total_emissions_t
+  }
