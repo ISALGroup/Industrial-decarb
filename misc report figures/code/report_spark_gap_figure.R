@@ -8,8 +8,8 @@ library(readr)
 library(ggplot2)
 #install.packages("sf")
 library(sf)
-install.packages("mapview")
-install.packages("showtext")
+#install.packages("mapview")
+#install.packages("showtext")
 library(showtext)
 #install.packages("tigris")
 library(tigris)
@@ -84,5 +84,4 @@ ggplot(map_data) +
     axis.ticks = element_blank(),
     axis.title = element_blank()
   )
-ggsave("misc report figures/output/spark_gap_2023.pdf", width = 5, height = 4.5, units = 'in', scale = 1.3) 
-
+ggsave("misc report figures/output/spark_gap_2023.png", width = 5, height = 4.5, units = 'in', scale = 1.4) 
