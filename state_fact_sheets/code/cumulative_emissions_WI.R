@@ -256,7 +256,8 @@ bau_cum_co2e <- facility_yearly_bau %>%
          grid_scenario = "BAU")
 
 # Combine for plotting
-plot_df <- bind_rows(bau_cum_co2e, cumulative_co2e_by_scenario_sector) 
+plot_df <- bind_rows(bau_cum_co2e, cumulative_co2e_by_scenario_sector) %>% 
+  mutate(sector = if_else(sector == "Chemicals", "Ethanol+", sector))
   
 
 # ---- (plotting code unchanged, just reuse your existing mapping objects) ----
@@ -279,7 +280,7 @@ scenario_labels <- c(
 )
 
 # ---- Order sectors manually ----
-sector_order <- c("Pulp & Paper", "Chemicals", "Food & Beverage")
+sector_order <- c("Pulp & Paper", "Ethanol+", "Food & Beverage")
 
 plot_df <- plot_df %>%
   mutate(
