@@ -84,4 +84,4 @@ ggplot(map_data) +
     axis.ticks = element_blank(),
     axis.title = element_blank()
   )
-ggsave("misc report figures/output/spark_gap_2023.png", width = 5, height = 4.5, units = 'in', scale = 1.4) 
+ggsave("misc report figures/output/spark_gap_2023.png") 
