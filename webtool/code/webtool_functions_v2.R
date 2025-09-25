@@ -1,7 +1,10 @@
-
 #### Functions for 2035 Webtool: Emissions & LCOH ####
 ## Nate M
-## 2025-09-18
+## 2025-09-25
+
+# Version Notes
+## Fuel type dummies 
+## Adds in the money / emissions savings calculations 
 
 #### SET-UP ####
 library(readxl)
@@ -10,7 +13,9 @@ library(dplyr)
 library(tidyr)
 library(stringr)
 
-#### EMISSIONS FUNCTION #### 
+webtool_df <- read_csv('webtool/data/webtool_data_20250925.csv')
+
+#### FUNCTIONS #### 
 # This takes user inputs & facility-level data to produce a facility-level emissions estimate.  
 # It does *not* apply the filtering to the dataset, which must be done beforehand. 
 
@@ -35,66 +40,11 @@ emissions_func <-
     total_emissions_t
   }
 
-#### EMISSIONS EXAMPLE ####
-# Here is an example of how this could applied in a dplyr pipeline below. 
-
-emissions_df <- read_csv('webtool/data/webtool_emissions_data_20250925.csv')
-
-# Say the user inputs Scenario1, 80% cleaner grid, co2e, and natural gas fuel type 
-user_tech_scenario <- "Scenario1"
-user_grid_clean_pct <- .8
-user_pollutant_type <- "co2e"
-user_fuel_type <- 'ng'
-
-emissions_example_results <- 
-  emissions_df %>%
-  # Filter dataset, per user input 
-  filter(
-    tech_scenario == user_tech_scenario & 
-    pollutant_type == user_pollutant_type &
-    !!sym(paste0(user_fuel_type, "_dum")) == 1
-  ) %>%
-  # Use function inside mutate() to calculate emissions outcome for each observation
-  mutate(
-    emissions_out = 
-      emissions_func(
-        # dataset variables
-        facility_emissions, 
-        grid_emissions_kg_kwh,
-        change_in_electricity_demand_kwh, 
-        
-        # user inputs 
-        user_grid_clean_pct
-      ), 
-    # Now making a dummy to show if emissions went up or down with electrification (for saves emissions toggle) 
-    saves_emissions = if_else(emissions_out < base_emissions, 1, 0)
-  ) %>%
-  # (example) group_by state/county to get the results for a pop-up box when a user clicks on a geographic area.
-  # For now, emissions will display as totals. 
-  group_by(state, naics_code) %>%
-  summarize(
-    emissions_out = sum(emissions_out, na.rm = TRUE)
-  ) %>%
-
-  mutate(
-
-  )
-
-# For reference -- filtering variables from the emissions dataset: 
-## tech_scenario --> Electrification scenario 
-## county_fips --> County
-## state --> State 
-## naics_code / sector --> Sector 
-## pollutant_type --> co2e, nox, so2, pm25 
-## fuel type --> use fuel type dummies 
-
-#### LCOH FUNCTION ####
-
 # This takes user inputs & facility-level data to produce a facility-level "levelized cost of heat" (LCOH) estimate.
 # Works same as emissions function (see above comments). 
 
 lcoh_func <- function(
-  ## User inputs 
+    ## User inputs 
   tech_scenario, # Electrification scenario (Baseline, E-Boiler, etc.)
   capex_subsidy, # Proportion of capex subsidized by govt (should take value 0-1)
   elec_discount, # Proportion of electricity price reduction (should take value 0-1)
@@ -115,7 +65,7 @@ lcoh_func <- function(
   eboiler_om_worst,    # Worst case e-boiler O&M costs
   hthp_om_best,        # Best case heat pump O&M costs
   hthp_om_worst       # Worst case heat pump O&M costs
-  ){
+){
   
   # Time discounting formula 
   discount_sum <- (1 - (1 + r)^(-t)) / r
@@ -168,9 +118,106 @@ lcoh_func <- function(
   )
 }
 
-#### LCOH EXAMPLE #### 
+#### EMISSIONS EXAMPLE (WITH IN THE MONEY / SAVES EMISSIONS)  ####
 
-lcoh_df <- read_csv('webtool/data/webtool_lcoh_data_20250918.csv')
+# "In the money" combines cost and emissions. We're saying: what are emissions outcomes if we  
+# assume that only facilities for whom electrification is cost effective electrify? 
+
+# "Saves emissions" --> assume only facilities that save emissions right now electrify 
+
+# User inputs 
+user_tech_scenario <- "Scenario1"
+user_grid_clean_pct <- .8
+user_pollutant_type <- "co2e"
+user_fuel_type <- 'ng'
+user_capex_subsidy <- .5
+user_elec_discount <- .25
+# Does the user change the assumptions on which facilities electrify? 
+# 1 means they toggled "yes" for this assumption. If "Assume all facilities electrify" is toggled, both are 0. 
+user_in_money_toggle <- 1
+user_saves_emissions_toggle <- 1
+
+emissions_example_results <- 
+  webtool_df %>%
+  # Filter dataset, per user input 
+  filter(
+    tech_scenario == user_tech_scenario & 
+      pollutant_type == user_pollutant_type &
+      !!sym(paste0(user_fuel_type, "_dum")) == 1
+  ) %>%
+  # Use function inside mutate() to calculate emissions & lcoh outcome for each observation
+  mutate(
+    emissions_out = 
+      emissions_func(
+        # dataset variables
+        facility_emissions, 
+        grid_emissions_kg_kwh,
+        change_in_electricity_demand_kwh, 
+        
+        # user inputs 
+        user_grid_clean_pct
+      ), 
+    
+    lcoh_out = lcoh_func(
+      ## User inputs
+      user_tech_scenario,
+      user_capex_subsidy, 
+      user_elec_discount, 
+      
+      ## LCOH dataset variables 
+      capex,
+      heat_mmbtu,
+      change_in_electricity_demand_kwh,
+      # Parameters
+      r, 
+      elec_price,
+      ng_price,
+      t, 
+      ngboiler_om_best, 
+      ngboiler_om_worst, 
+      eboiler_om_best, 
+      eboiler_om_worst, 
+      hthp_om_best, 
+      hthp_om_worst
+    ), 
+    
+    # create dummies for if electrification saves money / emissions 
+    saves_emissions = if_else(emissions_out < base_emissions, 1, 0), 
+    in_money = if_else(lcoh_out < base_lcoh, 1, 0), 
+    
+    # Create a dummy for whether the facility electrifies in this scenario, given the toggle settings. 
+    # If the toggle is on -- only facilities who meet the money/emissions-saving criteria will be a 1
+    electrify_dum = if_else(
+        (in_money >= user_in_money_toggle) & (saves_emissions >= user_saves_emissions_toggle),
+        1, 0
+    )
+  ) %>%
+  # (example) group_by state/county to get the results for a pop-up box when a user clicks on a geographic area.
+  group_by(state, naics_code) %>%
+  summarise(
+    base_emissions = sum(base_emissions, na.rm = TRUE),
+    # Add up: electrification scenario for facilities that electrify + baseline emissions for facilities that don't 
+    emissions_out = sum(
+      if_else(electrify_dum == 1, emissions_out, base_emissions),
+      na.rm = TRUE
+    ),
+  .groups = "drop"
+  ) %>%
+  mutate(
+    # negative values are good (green) here 
+    # Use emissions_change if user selects an electrification scenarios. If baseline, just call base_emissions 
+    emissions_change = base_emissions - emissions_out
+  )
+
+# For reference -- filtering variables from the emissions dataset: 
+## tech_scenario --> Electrification scenario 
+## county_fips --> County
+## state --> State 
+## naics_code / sector --> Sector 
+## pollutant_type --> co2e, nox, so2, pm25 
+## fuel type --> use fuel type dummies 
+
+#### LCOH EXAMPLE #### 
 
 # Hypothetical user inputs
 user_tech_scenario <- 'Scenario2'
@@ -209,7 +256,12 @@ lcoh_example_results <-
   # Example: summarizing for county results. LCOH should display as average. 
   group_by(county_fips, naics_code) %>%
   summarize(
-    lcoh_out = mean(lcoh_out, na.rm = TRUE),
+    base_lcoh = mean(base_lcoh, na.rm = TRUE),
+    lcoh_out = mean(lcoh_out, na.rm = TRUE)
+  ) %>%
+  mutate(
+    # Negative values are bad (red) here 
+    lcoh_change = base_lcoh - lcoh_out
   )
 
 # Filtering variables on LCOH dataset: 

@@ -529,3 +529,82 @@ emissions_func <-
     
     total_emissions_t
   }
+
+#### WISCONSIN EMISSIONS IN MONEY ####
+fig_policies <- c(
+  'No Policy',
+  'Capex: -100%, Elec: -0%', 
+  'Capex: -0%, Elec: -25%', 
+  'Capex: -0%, Elec: -50%', 
+  'Capex: -100%, Elec: -50%'
+)
+
+lcoh_tech_base <- 
+  facility_lcoh_df %>%
+  filter(
+    policy_label == "No Policy", 
+    tech_scenario %in% c('BaselineWorst', 'BaselineBest')
+  ) %>%
+  group_by(state, tech_scenario) %>%
+  summarize(
+    lcoh = mean(lcoh, na.rm = TRUE)
+  ) %>%
+  mutate(
+    scenario_clean = "Baseline (NG)", 
+    scenario_rank = str_extract(tech_scenario, "Best|Worst")
+  ) %>%
+  rename(
+    industry_ordered = scenario_clean
+  ) 
+
+WI_eim_df <- 
+  facility_lcoh_df %>%
+  filter(
+    !tech_scenario %in% c('BaselineWorst', 'BaselineBest'), 
+    state == 'WI'
+  ) %>%
+  left_join(
+    lcoh_tech_base |> 
+      filter(scenario_rank == 'Worst') |>
+      rename(lcoh_ng = lcoh) |>
+      select(state, lcoh_ng), 
+    by = 'state') %>%
+  mutate(
+    in_money = if_else(lcoh < lcoh_ng, 1, 0), 
+    sector = if_else(sector == 'Chemicals', "Ethanol+", sector), 
+    sector = factor(sector, levels = c('Ethanol+', 'Pulp & Paper', 'Food & Beverage'))
+  ) %>%
+  group_by(sector, policy_label) %>%
+  summarize(
+    eim = sum(elec_ghg_emissions[in_money == 1], na.rm = TRUE),
+    total_elec_ghg = sum(elec_ghg_emissions, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  filter(policy_label %in% fig_policies) %>%
+  mutate(
+    eim_Mt = eim/1000000, 
+    eim_prop = (eim/total_elec_ghg)*100,
+    policy_label = factor(policy_label, levels = fig_policies),
+  ) 
+
+WI_eim_plot <- 
+  ggplot(WI_eim_df,
+         aes(x = sector, y = eim_prop, fill = policy_label)) +
+  
+  # add boxplot 
+  geom_col(position = position_dodge(width = 0.8, preserve = "single"), width = 0.6) + 
+  
+  #scale_color_manual(values = sector_colors) +
+  #scale_y_continuous(limits = c(5, 21)) +
+  
+  labs( x = NULL, y = "% of Electrifiable Emissions 'in the Money'", fill = "Policy" ) + 
+  
+  theme_bw(base_size = 14) +
+  theme(
+    legend.position = c(0.7, 0.95),
+    legend.justification = c(0, 1),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12),
+    legend.background = element_rect(color = "black", linewidth = 0.2)
+  )
+

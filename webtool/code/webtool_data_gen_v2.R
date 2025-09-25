@@ -2,10 +2,11 @@
 
 # Version 1
 # NAM
-## 2025-09-18
+## 2025-09-25
 
 # Version notes:
-# Updates the copollutant workflow, national level results, includes full state parameters 
+# Adds fuel type dummies
+# Consolidates into one dataset, for the "in the money results" 
 
 #### SET-UP ####
 # Load Libraries
@@ -120,11 +121,42 @@ param <- read_csv('state_fact_sheets/data/parameters.csv')
 tech_combined_df <- 
   tech_input_df %>%
   left_join(facility_info, by = "facility_id") %>%
-  left_join(egrid_df, by = "subregion") 
+  left_join(egrid_df, by = "subregion") %>%
+  left_join(param, by = c('state'))
+
+#### BASELINE LCOH FUNCTION ####
+base_lcoh_func <- function(
+  ## Variables from the costs dataset  
+  capex,                                   # Up-front equipment cost
+  heat_mmbtu,                              # Quantity of heat used at the facility 
+  
+  ## Variables from the parameters dataset 
+  r,                   # Discount factor
+  ng_price,          # Natural gas price 
+  t,                   # Time horizon for LCOH calculation 
+  ngboiler_om_best,    # Best case natgas O&M costs
+  ngboiler_om_worst   # Worst case natgas O&M costs
+){
+  
+  # Time discounting formula 
+  discount_sum <- (1 - (1 + r)^(-t)) / r
+  
+  opex_ng_worst <- (heat_mmbtu / 0.75) * ng_price
+  opex_ng_best  <- (heat_mmbtu / 0.90) * ng_price
+  opex_ng       <- (opex_ng_worst + opex_ng_best) / 2
+  
+  opex_om_worst <- ngboiler_om_worst * capex
+  opex_om_best  <- ngboiler_om_best  * capex
+  opex_om       <- (opex_om_best + opex_om_worst) / 2
+  
+  numerator   <- capex + (opex_om + opex_ng) * discount_sum
+  denominator <- heat_mmbtu * discount_sum
+  numerator / denominator
+}
 
 #### Create & Save Datasets #### 
 
-web_emissions_df <- 
+webtool_df <- 
   tech_combined_df |>
   # Drawing pollutant type into a long format column for filtering by the webtool team. 
   pivot_longer(
@@ -152,19 +184,24 @@ web_emissions_df <-
       pollutant_type == 'nox' & str_detect(tech_scenario, 'Scenario') ~ nox_emissions, 
       pollutant_type == 'so2' & str_detect(tech_scenario, 'Scenario')  ~ so2_emissions, 
       pollutant_type == 'pm25' & str_detect(tech_scenario, 'Scenario') ~ pm25_emissions
-    )
+    ), 
+    # base LCOH
+    base_lcoh = 
+      base_lcoh_func(
+        ## LCOH dataset variables 
+        capex,
+        heat_mmbtu,
+        # Parameters
+        r, 
+        ng_price,
+        t, 
+        ngboiler_om_best, 
+        ngboiler_om_worst
+      )  
   ) %>%
-  select(-capex, -heat_mmbtu, -contains('base_emissions_'), -elec_ghg_emissions, -noelec_ghg_emissions, 
-         -nox_emissions, -so2_emissions, -pm25_emissions, -contains('match'), -fuel_reduction)
+  select(-contains('base_emissions_'), -elec_ghg_emissions, -noelec_ghg_emissions, 
+         -nox_emissions, -so2_emissions, -pm25_emissions, -contains('match'), -nei_id, -fuel_reduction)
 
-write_csv(web_emissions_df, glue("webtool/data/webtool_emissions_data_{format(Sys.Date(), '%Y%m%d')}.csv")) 
-
-web_lcoh_df <- 
-  tech_combined_df %>%
-  left_join(param, by = c('state')) %>%
-  select(-elec_ghg_emissions, -noelec_ghg_emissions, -contains('match'), -contains('emissions'), 
-         -ends_with("_kg_kwh"), -naics_description, -sector, -fuel_reduction, -nei_id) 
-
-write_csv(web_lcoh_df, glue("webtool/data/webtool_lcoh_data_{format(Sys.Date(), '%Y%m%d')}.csv")) 
+write_csv(webtool_df, glue("webtool/data/webtool_data_{format(Sys.Date(), '%Y%m%d')}.csv")) 
 
   
