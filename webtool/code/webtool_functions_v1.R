@@ -26,7 +26,7 @@ emissions_func <-
   ) {
     
     # Scale the grid emissions (kg per kwh) to be more clean (or the same, depending on what the user selects). 
-    scaled_grid.e_factor <- grid_emissions_kg_kwh * (1-grid_clean_pct_scenario)
+    scaled_grid.e_factor <- grid_emissions_kg_kwh * grid_clean_pct_scenario
     
     
     # emissions = the increase in emissions from the grid from electricity demand + non-electrifiable emissions at the facility 
@@ -38,7 +38,7 @@ emissions_func <-
 #### EMISSIONS EXAMPLE ####
 # Here is an example of how this could applied in a dplyr pipeline below. 
 
-emissions_df <- read_csv('webtool/data/webtool_emissions_data_20250918.csv')
+emissions_df <- read_csv('webtool/data/webtool_emissions_data_20250925.csv')
 
 # Say the user inputs Scenario1, 80% cleaner grid, co2e, and natural gas fuel type 
 user_tech_scenario <- "Scenario1"
@@ -65,13 +65,19 @@ emissions_example_results <-
         
         # user inputs 
         user_grid_clean_pct
-      )
+      ), 
+    # Now making a dummy to show if emissions went up or down with electrification (for saves emissions toggle) 
+    saves_emissions = if_else(emissions_out < base_emissions, 1, 0)
   ) %>%
   # (example) group_by state/county to get the results for a pop-up box when a user clicks on a geographic area.
   # For now, emissions will display as totals. 
   group_by(state, naics_code) %>%
   summarize(
-    emissions_out = sum(emissions_out, na.rm = TRUE),
+    emissions_out = sum(emissions_out, na.rm = TRUE)
+  ) %>%
+
+  mutate(
+
   )
 
 # For reference -- filtering variables from the emissions dataset: 
