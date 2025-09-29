@@ -37,7 +37,7 @@ tech_input_df <-
     capex = if_else(tech_scenario == 'BaselineWorst', 25761.09*(heat_mmbtu/54592)^0.8325, capex)
   ) %>%
   bind_rows(natgas_best) %>%
-  mutate(facility_name = tolower(facility_name), 
+  mutate(#facility_name = tolower(facility_name), 
          facility_id = as.character(facility_id),
          base_emissions_co2e = elec_ghg_emissions + noelec_ghg_emissions,
          
@@ -62,15 +62,17 @@ tech_input_df <-
   # Adding some dummies for fuel type 
   mutate(
     ng_dum = if_else(str_detect(fuels, 'Natural Gas'), 1, 0), 
-    biomass_dum = if_else(str_detect(fuels, 'Other Biomass Gases'), 1, 0), 
-    propane_dum = if_else(str_detect(fuels, 'Propane'), 1, 0), 
-    bituminous_dum = if_else(str_detect(fuels, 'Bituminous'), 1, 0), 
-    anthracite_dum = if_else(str_detect(fuels, 'Anthracite'), 1, 0), 
-    coalcoake_dum = if_else(str_detect(fuels, 'Coal Coke'), 1, 0), 
-    biomass_dum = if_else(str_detect(fuels, 'Other Biomass Gases'), 1, 0), 
-    distillate_dum = if_else(str_detect(fuels, 'Distillate Fuel Oil No. 2'), 1, 0),
-    tires_dum = if_else(str_detect(fuels, 'Tires'), 1, 0), 
-    wood_dum = if_else(str_detect(fuels, 'Wood and Wood Residuals (dry basis)'), 1, 0), 
+    fuel_oils_dum = if_else(str_detect(fuels, 'Fuel Oil'), 1, 0), 
+    coal_dum = if_else(fuels %in% c('Bituminous', 'Subbituminous', 'Anthracite', 
+                                    'Coal Coke', 'Mixed (Industrial sector)', 'Lignite'), 
+                       1, 0), 
+    byproducts_dum = if_else(fuels %in% c('Wood and Wood Residuals (dry basis)', 'Solid Byproducts', 
+                            'Agricultural Byproducts', 'Rendered Animal Fat', 'Vegetable Oil'), 
+                            1, 0), 
+    propane_dum = if_else(str_detect(fuels, 'Propane'), 1, 0),
+    other_dum = if_else(
+      !str_detect(fuels, "Natural Gas|Fuel Oil|Bituminous|Subbituminous|Anthracite|Coal Coke|Mixed \\(Industrial sector\\)|Lignite|Wood and Wood Residuals|Solid Byproducts|Agricultural Byproducts|Rendered Animal Fat|Vegetable Oil|Propane"),
+      1, 0), 
     
     across(where(is.numeric), ~ ifelse(is.nan(.x), NA, .x))
   )
@@ -132,7 +134,14 @@ web_emissions_df <-
     values_to = "grid_emissions_kg_kwh"
   ) %>%
   mutate(
-    # make one emissions variable, calibrated to copollutant & scenario
+    # make one base emissions variable, calibrated to copollutant 
+    base_emissions = case_when(
+      pollutant_type == 'co2e' ~ base_emissions_co2e, 
+      pollutant_type == 'nox' ~ base_emissions_nox, 
+      pollutant_type == 'so2' ~ base_emissions_so2, 
+      pollutant_type == 'pm25' ~ base_emissions_pm25,
+    ),
+    # make one emissions outcome variable, calibrated to copollutant & scenario
     facility_emissions = case_when(
       pollutant_type == 'co2e' & str_detect(tech_scenario, 'Baseline') ~ base_emissions_co2e, 
       pollutant_type == 'nox' & str_detect(tech_scenario, 'Baseline') ~ base_emissions_nox, 
@@ -145,7 +154,7 @@ web_emissions_df <-
       pollutant_type == 'pm25' & str_detect(tech_scenario, 'Scenario') ~ pm25_emissions
     )
   ) %>%
-  select(-capex, -heat_mmbtu, -contains('base'), -elec_ghg_emissions, -noelec_ghg_emissions, 
+  select(-capex, -heat_mmbtu, -contains('base_emissions_'), -elec_ghg_emissions, -noelec_ghg_emissions, 
          -nox_emissions, -so2_emissions, -pm25_emissions, -contains('match'), -fuel_reduction)
 
 write_csv(web_emissions_df, glue("webtool/data/webtool_emissions_data_{format(Sys.Date(), '%Y%m%d')}.csv")) 
