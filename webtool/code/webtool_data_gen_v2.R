@@ -62,7 +62,7 @@ tech_input_df <-
   select(-scenario_rank) %>%
   # Adding some dummies for fuel type 
   mutate(
-    ng_dum = if_else(str_detect(fuels, 'Natural Gas'), 1, 0), 
+    ng_dum = if_else(fuels == 'Natural Gas (Weighted U.S. Average)', 1, 0), 
     fuel_oils_dum = if_else(str_detect(fuels, 'Fuel Oil'), 1, 0), 
     coal_dum = if_else(fuels %in% c('Bituminous', 'Subbituminous', 'Anthracite', 
                                     'Coal Coke', 'Mixed (Industrial sector)', 'Lignite'), 
@@ -72,7 +72,7 @@ tech_input_df <-
                             1, 0), 
     propane_dum = if_else(str_detect(fuels, 'Propane'), 1, 0),
     other_dum = if_else(
-      !str_detect(fuels, "Natural Gas|Fuel Oil|Bituminous|Subbituminous|Anthracite|Coal Coke|Mixed \\(Industrial sector\\)|Lignite|Wood and Wood Residuals|Solid Byproducts|Agricultural Byproducts|Rendered Animal Fat|Vegetable Oil|Propane"),
+      !str_detect(fuels, "Natural Gas (Weighted U.S. Average)|Fuel Oil|Bituminous|Subbituminous|Anthracite|Coal Coke|Mixed \\(Industrial sector\\)|Lignite|Wood and Wood Residuals|Solid Byproducts|Agricultural Byproducts|Rendered Animal Fat|Vegetable Oil|Propane"),
       1, 0), 
     
     across(where(is.numeric), ~ ifelse(is.nan(.x), NA, .x))
