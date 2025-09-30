@@ -19,10 +19,12 @@ library(tidylog)
 library(stringr)
 library(janitor)
 library(glue)
+library(ggplot2)
 
-# Tech scenario input 
+# Tech sggplot2# Tech scenario input 
 tech_input_df.o <- 
-  read_excel("LCOH modelling/output/copollutant_longform_national_wtemps_addedsectors_29sept.xlsx") %>%
+  #read_excel("LCOH modelling/output/copollutant_longform_national_wtemps_addedsectors_29sept.xlsx") %>%
+  read_excel("LCOH modelling/output/copollutant_longform_MI.xlsx") %>%
   filter(state == st) %>%
   select(-1, -opex) 
 
@@ -437,8 +439,7 @@ elec_plot_df <-
   facility_lcoh_df |>
   # Filter to no policy support, Scenario4 outcomes
   filter(str_detect(tech_scenario, "Scenario4"), 
-         policy_label == 'No Policy', 
-         industry_clean == 'Pulp & Paper') |>
+         policy_label == 'No Policy') |>
   
   # Summarize at the scenario level. 
   group_by(#sector, 
@@ -601,9 +602,8 @@ emissions_func <-
     grid_clean_pct_scenario # What % cleaner is the grid? should take a value from 0-1
   ) {
     
-    # Scale the grid emissions (kg per kwh) to be more clean (or the same, depending on what the user selects). 
+    # Scale the grid emissions (kg per kwh) to be more clean 
     scaled_grid.e_factor <- grid_emissions_kg_kwh * (1-grid_clean_pct_scenario)
-    
     
     # emissions = the increase in emissions from the grid from electricity demand + non-electrifiable emissions at the facility 
     total_emissions_t = (change_in_electricity_demand_kwh * scaled_grid.e_factor) / 1000 + facility_emissions
@@ -615,7 +615,8 @@ emissions_func <-
 grid_scenarios <- tibble(grid_clean_pct_scenario = c(0, seq(0.5, 1.0, by = 0.1)))
 
 # --- Expand to All Grid Scenarios ---
-facility_emissions_long_df <- 
+subsector_emissions_df <- 
+  # expand to all grid scenarios 
   tidyr::crossing(tech_combined_df, grid_scenarios) %>%
   # Moving to a facility-tech.scenario-grid.scenario-pollutant level dataset
   pivot_longer(
@@ -653,53 +654,58 @@ facility_emissions_long_df <-
     )
   ) %>%
   select(-capex, -heat_mmbtu, -contains('base'), -elec_ghg_emissions, -noelec_ghg_emissions, 
-         -nox_emissions, -so2_emissions, -pm25_emissions)
-
-state_emissions_summary <-
-  facility_emissions_long_df %>%
-  group_by(sector, naics_code, naics_description, tech_scenario, clean_grid_scenario_label, pollutant_type) %>%
+         -nox_emissions, -so2_emissions, -pm25_emissions) %>% 
+  # collapse to from facility to industry(-tech scenario-grid scenario-pollutant) level  
+  group_by(industry_clean, tech_scenario, clean_grid_scenario_label, pollutant_type) %>%
   summarise(
     facility_emissions = sum(facility_emissions, na.rm = TRUE),
     total_emissions = sum(total_emissions, na.rm = TRUE),
+    industry_clean = min(industry_clean),
     .groups = "drop"
-  )
-
-#### PRESENT-DAY EMISSIONS FIGURE ####
-# Always order current -> more clean
-clean_grid_levels <- c("Current Grid Mix", "50% Cleaner Grid", "100% Cleaner Grid")
-
-# Filter, average best/worst, convert to MtCO₂e
-emissions_df <- 
-  state_emissions_df %>%
-  # Which grid scenarios to highlight? 
-  filter(clean_grid_scenario_label %in% clean_grid_levels) %>%
+  ) %>%
   mutate(
     scenario_base = str_remove(tech_scenario, "Best|Worst"),
+    emissions_MMt = total_emissions/1000000) %>%
+  # just going with the best case for now, which also pulls BaselineBest
+  filter(str_detect(tech_scenario, 'Best'))
+
+# Order levels for the charts (highest to least emissions)
+order_levels <- 
+  subsector_emissions_df %>%
+  filter(clean_grid_scenario_label == "Current Grid Mix" & pollutant_type == 'co2e') %>%
+  group_by(industry_clean) %>%
+  summarise(total_emissions = sum(total_emissions, na.rm = TRUE)) %>%
+  arrange(desc(total_emissions)) %>%
+  pull(industry_clean)
+
+subsector_emissions_df <- 
+  subsector_emissions_df %>%
+  mutate(industry_clean = factor(industry_clean, levels = order_levels))
+
+#### PRESENT-DAY EMISSIONS FIGURES ####
+# Always order current -> more clean
+clean_grid_levels <- c("Current Grid Mix", "80% Cleaner Grid", "100% Cleaner Grid")
+
+co2e_plot <- 
+  subsector_emissions_df |>
+  filter(pollutant_type == 'co2e' & 
+         clean_grid_scenario_label %in% clean_grid_levels) |>
+  mutate(
     clean_grid_scenario_label = factor(
       clean_grid_scenario_label,
       levels = clean_grid_levels
-    )) %>%
-  # just going with the best case for now, which also pulls BaselineBest
-  filter(str_detect(tech_scenario, 'Best')) %>%
-  group_by(industry_clean, clean_grid_scenario_label, scenario_base, pollutant_type) %>%
-  summarise(
-    total_emissions = sum(total_emissions)) %>%
-  ungroup() %>%
-  mutate(emissions_Mt = total_emissions/1000000) # for CO2e
-
-co2e_plot <- 
-  emissions_df |>
-  filter(pollutant_type == 'co2e') |>
-  ggplot(aes(x = industry_clean, y = emissions_Mt, fill = scenario_base)) +
+      )
+    ) |>
+  ggplot(aes(x = industry_clean, y = emissions_MMt, fill = scenario_base)) +
   geom_col(position = position_dodge(width = 0.8), width = 0.6) +
   facet_wrap(~ clean_grid_scenario_label, nrow = 1) +
   labs(
     x = NULL,
-    y = "GHG Emissions (Mt CO2e)",
+    y = "GHG Emissions (MMt CO2e)",
     fill = "Tech Scenario"
   ) +
   scale_fill_manual(values = scenario_colors, labels = scenario_labels) +
-  scale_y_continuous(limits = c(0, max(emissions_df$emissions_Mt) * 1.1), expand = c(0, 0)) + # dynamic limit
+  scale_y_continuous(limits = c(0, max(subsector_emissions_df$emissions_MMt) * 1.1), expand = c(0, 0)) + # dynamic limit
   theme_bw(base_size = 14) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1, size = 9), 
@@ -708,9 +714,18 @@ co2e_plot <-
     legend.background = element_rect(color = "black", linewidth = 0.2)
   )
 
+co2e_plot
+
 so2_plot <- 
-  emissions_df |>
-  filter(pollutant_type == 'so2') |>
+  subsector_emissions_df |>
+  filter(pollutant_type == 'so2' & 
+         clean_grid_scenario_label %in% clean_grid_levels) |>
+  mutate(
+    clean_grid_scenario_label = factor(
+      clean_grid_scenario_label,
+      levels = clean_grid_levels
+    )
+  ) |>
   ggplot(aes(x = industry_clean, y = total_emissions, fill = scenario_base)) +
   geom_col(position = position_dodge(width = 0.8), width = 0.6) +
   facet_wrap(~ clean_grid_scenario_label, nrow = 1) +
@@ -729,9 +744,18 @@ so2_plot <-
     legend.background = element_rect(color = "black", linewidth = 0.2)
   )
 
+so2_plot
+
 nox_plot <- 
-  emissions_df |>
-  filter(pollutant_type == 'nox') |>
+  subsector_emissions_df |>
+  filter(pollutant_type == 'nox' & 
+         clean_grid_scenario_label %in% clean_grid_levels) |>
+  mutate(
+    clean_grid_scenario_label = factor(
+      clean_grid_scenario_label,
+      levels = clean_grid_levels
+    )
+  ) |>
   ggplot(aes(x = industry_clean, y = total_emissions, fill = scenario_base)) +
   geom_col(position = position_dodge(width = 0.8), width = 0.6) +
   facet_wrap(~ clean_grid_scenario_label, nrow = 1) +
@@ -750,9 +774,18 @@ nox_plot <-
     legend.background = element_rect(color = "black", linewidth = 0.2)
   )
 
+nox_plot
+
 pm25_plot <- 
-  emissions_df |>
-  filter(pollutant_type == 'pm25') |>
+  subsector_emissions_df |>
+  filter(pollutant_type == 'pm25' & 
+         clean_grid_scenario_label %in% clean_grid_levels) |>
+  mutate(
+    clean_grid_scenario_label = factor(
+      clean_grid_scenario_label,
+      levels = clean_grid_levels
+    )
+  ) |>
   ggplot(aes(x = industry_clean, y = total_emissions, fill = scenario_base)) +
   geom_col(position = position_dodge(width = 0.8), width = 0.6) +
   facet_wrap(~ clean_grid_scenario_label, nrow = 1) +
@@ -771,14 +804,10 @@ pm25_plot <-
     legend.background = element_rect(color = "black", linewidth = 0.2)
   )
 
-
-co2e_plot
-so2_plot
-nox_plot
 pm25_plot
 
-####
-
+#### EMISSIONS V GRID INTENSITY ####
+x_vals <- seq(0, 0.1, length.out = 200)
 
 #### CUMULATIVE EMISSIONS FIGURE ####
 
@@ -789,6 +818,15 @@ fig_policies <- c(
   'Capex: -0%, Elec: -25%', 
   'Capex: -0%, Elec: -50%', 
   'Capex: -100%, Elec: -50%'
+)
+
+
+policy_colors <- c(
+  "No Policy" = "#fb9a99",
+  'Capex: -100%, Elec: -0%' = , 
+  'Capex: -0%, Elec: -25%' = , 
+  'Capex: -0%, Elec: -50%' = , 
+  'Capex: -100%, Elec: -50%' = 
 )
 
 lcoh_tech_base <- 
@@ -889,3 +927,167 @@ ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{st}/{st}_capex_
 
 
 
+
+######## ONE-OFFS #########
+#### RMI LCOH V ELECTRICITY ####
+x_vals <- seq(0, 0.15, length.out = 200)
+
+elec_plot_df <- 
+  facility_lcoh_df |>
+  # Filter to no policy support, Scenario4 outcomes, pulp & paper
+  filter(str_detect(tech_scenario, "Scenario4"), 
+         policy_label == 'No Policy', 
+         industry_clean == 'Pulp & Paper') |>
+  
+  # Summarize at the scenario level. 
+  group_by(#sector, 
+    tech_scenario) |>
+  summarize(
+    #sector = min(sector), 
+    capex = mean(capex), 
+    change_in_electricity_demand_kwh = mean(change_in_electricity_demand_kwh), 
+    heat_mmbtu = mean(heat_mmbtu), 
+    tech_scenario = min(tech_scenario),
+    capex_subsidy = mean(capex_subsidy), # will be zero
+    elec_discount = mean(elec_discount), # will be zero
+  ) |>
+  ungroup() |>
+  tidyr::crossing(x = x_vals) |>
+  mutate(
+    lcoh = lcoh_func(
+      param$r, 
+      x,
+      param$ng_price,
+      param$t, 
+      param$ngboiler_om_best, 
+      param$ngboiler_om_worst, 
+      param$eboiler_om_best, 
+      param$eboiler_om_worst, 
+      param$hthp_om_best, 
+      param$hthp_om_worst, 
+      ## tech scenario + calculations 
+      tech_scenario,
+      capex,
+      heat_mmbtu,
+      change_in_electricity_demand_kwh,
+      ## policy scenarios
+      capex_subsidy, 
+      elec_discount 
+    ),
+    x = x*100
+  ) |>
+  # average across best and worst case scenarios to get the sector-level outcome
+  group_by(x) |>
+  summarize(
+    lcoh = mean(lcoh)
+  )
+
+# Get the point at which the heat pump LCOH line intersects the NG LCOH 
+ng_x_intercept <- with(elec_plot_df, approx(lcoh, x, xout = ng_max))$y
+
+lcoh_v_elec_plot <- 
+  ggplot() +
+  # Main LCOH curve
+  geom_line(data = elec_plot_df,
+            aes(x = x, y = lcoh, color = "Heat Pump", linetype = "Heat Pump"),
+            size = 1) +
+  
+  # NG Boiler reference line
+  geom_hline(aes(yintercept = ng_max,
+                 color = "Natural Gas Boiler",
+                 linetype = "Natural Gas Boiler"),
+             size = 0.75) +
+  
+  # Other vlines not in legend
+  geom_vline(xintercept = param$elec_price * 100, color =  "#FFBF00", size = 0.5) +
+  geom_vline(xintercept = ng_x_intercept, color = "#FFBF00", linetype = "longdash", size = 0.75) +
+  
+  # Reverse x-axis
+  scale_x_reverse(limits = c(15, 0)) +
+  
+  # Unified legend with manual scales
+  scale_color_manual(
+    name = NULL,
+    values = c(
+      "Heat Pump" = "#004b79",
+      "Natural Gas Boiler" = "#c4d5e7"
+    )
+  ) +
+  scale_linetype_manual(
+    name = NULL,
+    values = c(
+      "Heat Pump" = "solid",
+      "Natural Gas Boiler" = "solid"
+    )
+  ) +
+  
+  labs(
+    y = "Levelized Cost of Heat ($/MMBtu)",
+    x = "Cost of Electricity (¢/kWH)"
+  ) +
+  
+  theme_bw(base_size = 14) +
+  theme(
+    legend.position = c(0.75, 0.95),
+    legend.justification = c(0, 1),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 11),
+    legend.background = element_rect(
+      color = "black",
+      linewidth = 0.2
+    ), 
+    panel.grid = element_blank() 
+  )
+
+
+
+#### RMI EMISSIONS PLOT ####
+# Always order current -> more clean
+clean_grid_levels <- c("Current Grid Mix", "60% Cleaner Grid", "100% Cleaner Grid")
+
+scenario_colors <- c(
+  "Baseline"   = "#fb9a99",
+  "Scenario4"  = "#004b79"
+)
+
+scenario_labels <- c(
+  "Baseline"   = "Baseline",
+  "Scenario4"  = "ASHP"
+)
+
+co2e_plot <- 
+  subsector_emissions_df |>
+  filter(pollutant_type == 'co2e' & 
+           clean_grid_scenario_label %in% clean_grid_levels & 
+           scenario_base %in% c('Baseline', 'Scenario4')  ) |>
+  mutate(
+    clean_grid_scenario_label = case_when(
+      clean_grid_scenario_label == "60% Cleaner Grid" ~ "60% Cleaner Grid by 2035", 
+      clean_grid_scenario_label == "100% Cleaner Grid" ~ "100% Clean Grid by 2040", 
+      TRUE ~ clean_grid_scenario_label 
+    ), 
+    clean_grid_scenario_label = factor(
+      clean_grid_scenario_label,
+      levels = c('Current Grid Mix', '60% Cleaner Grid by 2035', '100% Clean Grid by 2040')
+    )
+  ) |>
+  ggplot(aes(x = industry_clean, y = emissions_MMt, fill = scenario_base)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.6) +
+  facet_wrap(~ clean_grid_scenario_label, nrow = 1) +
+  labs(
+    x = NULL,
+    y = "GHG Emissions (MMt CO2e)",
+    fill = "Tech Scenario"
+  ) +
+  scale_fill_manual(values = scenario_colors, labels = scenario_labels) +
+  scale_y_continuous(limits = c(0, max(subsector_emissions_df$emissions_MMt) * 1.1), expand = c(0, 0)) + # dynamic limit
+  theme_bw(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 9), 
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 11),
+    legend.background = element_rect(color = "black", linewidth = 0.2), 
+    panel.grid = element_blank()
+  )
+
+co2e_plot
