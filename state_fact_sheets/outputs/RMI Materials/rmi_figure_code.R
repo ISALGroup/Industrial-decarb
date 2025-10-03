@@ -26,7 +26,8 @@ ng_x_il_max <- with(elec_plot_df_il, approx(lcoh_Best, x, xout = param_rmi$ng_ma
 ng_x_il_min <- with(elec_plot_df_il, approx(lcoh_Worst, x, xout = param_rmi$ng_min[1]))$y
 ng_x_il_mean <- (ng_x_il_max + ng_x_il_min) / 2
 
-# lcoh_v_elec_plot_il <- 
+
+lcoh_v_elec_plot_il <- 
   ggplot(data = elec_plot_df_il) +
   geom_ribbon(aes(x = x, ymin = lcoh_Best, ymax = lcoh_Worst),
               fill = "grey90", alpha = 0.3) +
@@ -45,16 +46,15 @@ ng_x_il_mean <- (ng_x_il_max + ng_x_il_min) / 2
                    color = "Natural Gas Boiler",
                    linetype = "Natural Gas Boiler"),
                size = 0.75) +
-  # geom_segment(aes(x = 0, xend = 15,
-  #                  y = param_rmi$ng_min[1], 
-  #                  yend = param_rmi$ng_min[1],
-  #                  color = "Natural Gas Boiler",
-  #                  linetype = "Natural Gas Boiler"),
-  #              size = 0.75) +
 
-  # Other vlines not in legend
-  geom_vline(xintercept = param_rmi$elec_price[1] * 100, color =  "#FFBF00", size = 0.5) +
+  # Current electricity price 
+  annotate("rect", xmin = param_rmi$elec_price_low[1] * 100, xmax = param_rmi$elec_price_high[1] * 100,
+           ymin = -Inf, ymax = Inf,
+           fill = "#FFBF00", alpha = 0.1) +
+  geom_vline(xintercept = param_rmi$elec_price_mean[1] * 100, 
+             color =  "#FFBF00", size = 0.5) +
 
+  # Intersection 
   annotate("rect", xmin = ng_x_il_min, xmax = ng_x_il_max,
            ymin = -Inf, ymax = Inf,
            fill = "#FFBF00", alpha = 0.1) +
