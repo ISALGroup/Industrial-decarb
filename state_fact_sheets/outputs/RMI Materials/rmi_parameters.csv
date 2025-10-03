@@ -1,3 +1,3 @@
-state,elec_price,ng_price,r,t,ngboiler_om_best,ngboiler_om_worst,eboiler_om_best,eboiler_om_worst,hthp_om_best,hthp_om_worst,ng_min,ng_max
-IL,0.0916,6.54,0.065,30,0.03,0.06,0.01,0.01,0.01,0.05,7.271034898290974,8.76534289908391
-MI,0.0827,7.57,0.065,30,0.03,0.06,0.01,0.01,0.01,0.05,8.415900905620852,10.143811930489363
+state,elec_price_mean,elec_price_low,elec_price_high,ng_price,r,t,ngboiler_om_low,ngboiler_om_high,eboiler_om_low,eboiler_om_high,hthp_om_low,hthp_om_high,ng_min,ng_max
+IL,0.08078263933352799,0.06340034700000001,0.099127539,6.54,0.065,30,0.03,0.06,0.01,0.01,0.01,0.05,7.271034898290974,10.138676232417243
+MI,0.0840762303380335,0.083357007,0.085617705,7.57,0.065,30,0.03,0.06,0.01,0.01,0.01,0.05,7.271456461176409,10.143811930489363

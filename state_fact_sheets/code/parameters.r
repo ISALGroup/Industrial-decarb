@@ -3,6 +3,7 @@
 #### SET-UP ####
 library(readxl)
 library(readr)
+library(Hmisc)
 library(dplyr)
 library(tidyr)
 library(tidylog)
@@ -11,38 +12,25 @@ library(janitor)
 library(glue)
 
 # Import electricity prices
-# See sources in param
-eia_elec <- read_xlsx(
-  "state_fact_sheets/data/raw/EIA Sales_Ult_Cust_2023.xlsx",
-  sheet = "States", skip = 2, n_max = 2824, guess_max = 2824
-) |>
+eia_elec <- 
+  read_xlsx("state_fact_sheets/data/raw/EIA table_8.xlsx", skip = 2) |>
+  slice_head(n = -48) |> # remove some stuff not needed at the end
   clean_names() |>
-  select(state, thousand_dollars_16, megawatthours_17) |>
-  rename(
-    revenues_ind = thousand_dollars_16,
-    sales_mwh_ind = megawatthours_17
-  ) |>
   mutate(
-    revenues_ind = na_if(revenues_ind, "."),
-    revenues_ind = na_if(revenues_ind, "-"),
-    sales_mwh_ind = na_if(sales_mwh_ind, "."),
-    sales_mwh_ind = na_if(sales_mwh_ind, "-"),
-    revenues_ind = as.numeric(revenues_ind),
-    sales_mwh_ind = as.numeric(sales_mwh_ind),
-    elec_price = if_else(sales_mwh_ind > 0,
-                         revenues_ind / sales_mwh_ind,
-                         NA_real_)
-  ) |>
+    average_price_cents_k_wh = as.numeric(average_price_cents_k_wh),
+    elec_price = average_price_cents_k_wh / 100) |>
   group_by(state) |>
-  summarize(
-    elec_price_high = ifelse(all(is.na(elec_price)), NA_real_,
-                             max(elec_price, na.rm = TRUE)),
-    elec_price_low  = ifelse(all(is.na(elec_price)), NA_real_,
-                             min(elec_price, na.rm = TRUE)),
+  dplyr::summarize(
+    # weighted mean
+    elec_price_mean = Hmisc::wtd.mean(elec_price, weights = sales_megawatthours, na.rm = TRUE),
+    
+    # weighted percentiles 
+    elec_price_low  = Hmisc::wtd.quantile(elec_price, weights = sales_megawatthours,
+                                   probs = 0.25, na.rm = TRUE),
+    elec_price_high = Hmisc:: wtd.quantile(elec_price, weights = sales_megawatthours,
+                                   probs = 0.75, na.rm = TRUE),
     .groups = "drop"
-  ) |>
-  filter(!state == 'DC' & !is.na(state))
-  
+  )
 
 # eia_elec <- 
 #   read_csv('state_fact_sheets/data/raw/EIA Annual Industrial Electricity Prices.csv') |>
@@ -87,12 +75,12 @@ param <-
   mutate(
     r = 0.065, 
     t = 30, 
-    ngboiler_om_best	= 0.03, 
-    ngboiler_om_worst	= 0.06, 
-    eboiler_om_best	= 0.01, 
-    eboiler_om_worst = 0.01, 
-    hthp_om_best = 0.01, 
-    hthp_om_worst = 0.05
+    ngboiler_om_low	= 0.03, 
+    ngboiler_om_high	= 0.06, 
+    eboiler_om_low	= 0.01, 
+    eboiler_om_high = 0.01, 
+    hthp_om_low = 0.01, 
+    hthp_om_high = 0.05
   )
 
 write_csv(param, 'state_fact_sheets/data/parameters.csv') 
