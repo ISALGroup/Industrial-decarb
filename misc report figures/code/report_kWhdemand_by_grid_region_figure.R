@@ -71,7 +71,19 @@ sf_use_s2(FALSE)  # avoid s2 errors on complex polygons
 facilities_with_ba <- facilities_sf %>%
   st_join(ba_polygons, join = st_intersects) %>%
   distinct(facility_id, .keep_all = TRUE) %>% 
-  #mutate() EIAcode AEC to SOCO, EEI to MISO, OVEC to PJM -- also replace EIAname and EIAregion
+  mutate(
+    EIAcode = case_when(
+      EIAcode == "AEC"  ~ "SOCO",  
+      EIAcode == "EEI"  ~ "MISO",  
+      EIAcode == "OVEC" ~ "PJM",   
+      TRUE ~ EIAcode
+    ),
+    EIAname = case_when(
+      EIAcode == "SOCO" ~ "Southern Company Services, Inc. - Trans",
+      EIAcode == "MISO" ~ "Midcontinent Independent System Operator, Inc.",
+      EIAcode == "PJM"  ~ "PJM Interconnection, LLC",
+      TRUE ~ EIAname
+    ))
 
 # group by BA
 ba_aggregated <- facilities_with_ba %>%
@@ -97,10 +109,14 @@ ba_region_aggregated <- facilities_with_ba %>%
 ba_polygons_with_totals <- ba_polygons %>%
   left_join(ba_region_aggregated, by = "EIAregion")
 
+# EIA note: Note that balancing authorities are electric entities and do not have 
+# well-defined geographical boundaries. As a result, the balancing authority shapefiles 
+# sometimes overlap each other and sometimes have gaps in geographic coverage. 
+# The geographic shapefiles provide a rough idea of the extent of coverage for each 
+# balancing authority; they are not meant to represent strict boundaries. 
+
 ggplot() +
-  geom_sf(data = ba_polygons_with_totals, aes(fill = total_post_MWh), color = "grey30") +
-  scale_fill_viridis_c(option = "plasma") +
-  theme_minimal()
+  geom_sf(data = ba_polygons_with_totals, aes(fill = EIAregion))
 
 
 #import Sales_Ult_Cust_2023 and filter out Part == C because that is only energy delivered, where someone else supplies the energy (A is both, B is only energy, D is both)
@@ -194,5 +210,8 @@ ba_with_baseline <- ba_aggregated %>%
   )
 
 
+#####
 
+MI <- facilities_with_ba %>% 
+  filter(state == "MI")
 
