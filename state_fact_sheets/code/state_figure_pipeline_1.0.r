@@ -23,8 +23,8 @@ library(ggplot2)
 
 # Tech sggplot2# Tech scenario input 
 tech_input_df.o <- 
-  #read_excel("LCOH modelling/output/copollutant_longform_national_wtemps_addedsectors_29sept.xlsx") %>%
-  read_excel("LCOH modelling/output/copollutant_longform_MI.xlsx") %>%
+  read_excel("LCOH modelling/output/copollutant_longform_national_wtemps_addedsectors_30sept.xlsx") %>%
+  #read_excel("LCOH modelling/output/copollutant_longform_MI.xlsx") %>%
   filter(state == st) %>%
   select(-1, -opex) 
 
@@ -592,6 +592,57 @@ capex_plot <-
 
 capex_plot
 
+capex_data_kw <- 
+  facility_lcoh_df |>
+  filter(policy_label == 'No Policy') |>
+  mutate(
+    heat_kw = heat_mmbtu * 293.071 / 8000,
+    scenario_rank = str_extract(tech_scenario, "(Best|Worst)$"),
+    tech_scenario = str_remove(tech_scenario, "(Best|Worst)$"), 
+    technology = case_when(
+      tech_scenario == 'Baseline' ~ 'NG Boiler', 
+      tech_scenario %in% c('Scenario1', 'Scenario3') ~ 'E-Boiler', 
+      tech_scenario %in% c('Scenario2', 'Scenario4') ~ 'ASHP'
+    ), 
+    tech_scenario = factor(tech_scenario, levels = c("NG Boiler", "E-Boiler", "ASHP")), 
+    capex_per_kw = capex / heat_kw
+  ) |>
+  select(facility_id, state, industry_clean, capex_per_kw, technology, tech_scenario, scenario_rank)
+
+# Capex Plot 
+capex_plot_kw <-
+  ggplot(capex_data_kw, aes(x = technology, y = capex_per_kw, fill = technology)) +
+  geom_boxplot(
+    outlier.shape = 21,       # filled circle with outline
+    outlier.size  = 1.8,
+    outlier.stroke = 0.25,
+    outlier.alpha = 0.8, 
+    width = 0.6,
+    position = position_dodge2(width = 1, preserve = "single", reverse = TRUE)
+  ) +
+  
+  scale_fill_manual(
+    values = tech_colors,
+    breaks = c("NG Boiler", "E-Boiler", "ASHP"),
+    limits = c("NG Boiler", "E-Boiler", "ASHP"),
+    name = "Technology" 
+  ) +
+  #scale_y_continuous(limits = c(0, 90)) +
+  
+  labs(x = NULL, y = "CAPEX ($/kW)") +
+  theme_bw(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    legend.position = c(0.8, 0.95),
+    legend.justification = c(0, 1),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12),
+    legend.background = element_rect(color = "black", linewidth = 0.2)
+  ) +
+  guides(fill = "none")
+
+capex_plot_kw
+
 #### EMISSIONS DATA WORK & SET-UP ####
 emissions_func <- 
   function(
@@ -929,10 +980,10 @@ ggsave(glue("state_fact_sheets/outputs/state-fact-sheet-figures/{st}/{st}_capex_
 
 
 ######## ONE-OFFS #########
-#### RMI LCOH V ELECTRICITY ####
+#### RMI LCOH V ELECTRICITY DATA ####
 x_vals <- seq(0, 0.15, length.out = 200)
 
-elec_plot_df <- 
+elec_plot_df_mi <- 
   facility_lcoh_df |>
   # Filter to no policy support, Scenario4 outcomes, pulp & paper
   filter(str_detect(tech_scenario, "Scenario4"), 
@@ -974,72 +1025,88 @@ elec_plot_df <-
       capex_subsidy, 
       elec_discount 
     ),
-    x = x*100
+    x = x*100, 
+    scenario_rank = str_extract(tech_scenario, "(Best|Worst)$")
   ) |>
-  # average across best and worst case scenarios to get the sector-level outcome
-  group_by(x) |>
+  select(x, scenario_rank, lcoh) |>
+  rename(lcoh_mi = lcoh)
+
+ng_min_mi <- min(facility_lcoh_df$lcoh[facility_lcoh_df$tech_scenario == 'BaselineBest'])
+ng_max_mi <- max(facility_lcoh_df$lcoh[facility_lcoh_df$tech_scenario == 'BaselineWorst'])
+
+# Need to re-do the import before making this 
+elec_plot_df_il <- 
+  facility_lcoh_df |>
+  # Filter to no policy support, Scenario4 outcomes, pulp & paper
+  filter(str_detect(tech_scenario, "Scenario4"), 
+         policy_label == 'No Policy', 
+         industry_clean == 'Wet Corn Milling') |>
+  # Summarize at the scenario level. 
+  group_by(#sector, 
+    tech_scenario) |>
   summarize(
-    lcoh = mean(lcoh)
-  )
+    #sector = min(sector), 
+    capex = mean(capex), 
+    change_in_electricity_demand_kwh = mean(change_in_electricity_demand_kwh), 
+    heat_mmbtu = mean(heat_mmbtu), 
+    tech_scenario = min(tech_scenario),
+    capex_subsidy = mean(capex_subsidy), # will be zero
+    elec_discount = mean(elec_discount), # will be zero
+  ) |>
+  ungroup() |>
+  tidyr::crossing(x = x_vals) |>
+  mutate(
+    lcoh = lcoh_func(
+      param$r, 
+      x,
+      param$ng_price,
+      param$t, 
+      param$ngboiler_om_best, 
+      param$ngboiler_om_worst, 
+      param$eboiler_om_best, 
+      param$eboiler_om_worst, 
+      param$hthp_om_best, 
+      param$hthp_om_worst, 
+      ## tech scenario + calculations 
+      tech_scenario,
+      capex,
+      heat_mmbtu,
+      change_in_electricity_demand_kwh,
+      ## policy scenarios
+      capex_subsidy, 
+      elec_discount 
+    ),
+    x = x*100, 
+    scenario_rank = str_extract(tech_scenario, "(Best|Worst)$")
+  ) |>
+  select(x, scenario_rank, lcoh) |>
+  rename(lcoh_il = lcoh)
 
-# Get the point at which the heat pump LCOH line intersects the NG LCOH 
-ng_x_intercept <- with(elec_plot_df, approx(lcoh, x, xout = ng_max))$y
+ng_min_il <- min(facility_lcoh_df$lcoh[facility_lcoh_df$tech_scenario == 'BaselineBest'])
+ng_max_il <- max(facility_lcoh_df$lcoh[facility_lcoh_df$tech_scenario == 'BaselineWorst'])
 
-lcoh_v_elec_plot <- 
-  ggplot() +
-  # Main LCOH curve
-  geom_line(data = elec_plot_df,
-            aes(x = x, y = lcoh, color = "Heat Pump", linetype = "Heat Pump"),
-            size = 1) +
-  
-  # NG Boiler reference line
-  geom_hline(aes(yintercept = ng_max,
-                 color = "Natural Gas Boiler",
-                 linetype = "Natural Gas Boiler"),
-             size = 0.75) +
-  
-  # Other vlines not in legend
-  geom_vline(xintercept = param$elec_price * 100, color =  "#FFBF00", size = 0.5) +
-  geom_vline(xintercept = ng_x_intercept, color = "#FFBF00", linetype = "longdash", size = 0.75) +
-  
-  # Reverse x-axis
-  scale_x_reverse(limits = c(15, 0)) +
-  
-  # Unified legend with manual scales
-  scale_color_manual(
-    name = NULL,
-    values = c(
-      "Heat Pump" = "#004b79",
-      "Natural Gas Boiler" = "#c4d5e7"
-    )
-  ) +
-  scale_linetype_manual(
-    name = NULL,
-    values = c(
-      "Heat Pump" = "solid",
-      "Natural Gas Boiler" = "solid"
-    )
-  ) +
-  
-  labs(
-    y = "Levelized Cost of Heat ($/MMBtu)",
-    x = "Cost of Electricity (¢/kWH)"
-  ) +
-  
-  theme_bw(base_size = 14) +
-  theme(
-    legend.position = c(0.75, 0.95),
-    legend.justification = c(0, 1),
-    legend.text = element_text(size = 10),
-    legend.title = element_text(size = 11),
-    legend.background = element_rect(
-      color = "black",
-      linewidth = 0.2
+elec_plot_df <- 
+  left_join(elec_plot_df_mi, elec_plot_df_il, by = c('x', 'scenario_rank'))
+
+write_csv(elec_plot_df, 'state_fact_sheets/outputs/RMI Materials/elec_plot_data.csv')
+
+param_rmi <- 
+  read_csv('state_fact_sheets/data/parameters.csv') %>%
+  filter(state %in% c('IL', 'MI')) |>
+  mutate(
+    ng_min = case_when(
+      state == 'IL' ~ ng_min_il,
+      state == 'MI' ~ ng_min_mi
     ), 
-    panel.grid = element_blank() 
+    ng_max = case_when(
+      state == 'IL' ~ ng_max_il, 
+      state == 'MI' ~ ng_max_mi
+    )
   )
 
+write_csv(param_rmi, 'state_fact_sheets/outputs/RMI Materials/rmi_parameters.csv')
 
+## See rmi_figure_code.R for the actual figures 
 
 #### RMI EMISSIONS PLOT ####
 # Always order current -> more clean
