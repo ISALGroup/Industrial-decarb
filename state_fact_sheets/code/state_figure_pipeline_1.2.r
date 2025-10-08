@@ -21,7 +21,7 @@ library(janitor)
 library(glue)
 library(ggplot2)
 
-# Tech sggplot2# Tech scenario input 
+# Tech scenario input 
 tech_input_df.o <- 
   read_excel("LCOH modelling/output/copollutant_longform_national_wtemps_addedsectors_30sept.xlsx") %>%
   #read_excel("LCOH modelling/output/copollutant_longform_MI.xlsx") %>%
