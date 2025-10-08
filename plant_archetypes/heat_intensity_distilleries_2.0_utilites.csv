@@ -1,0 +1,13 @@
+Unit name,Heat demand (Steam kJ),Heat demand (Fuel kJ),Electricity demand (kWh),Heat produced (kJ),Fuel produced (kJ),Electricity produced (kWh),Waste heat (kJ),Compressed air demand (kg),Compressed air produced (kg)
+Miller,0,0,1.0,0,0,0,0,0,0
+Mash Tub,0,0,0,0,0,0,0,0,0
+Mash Cooker,3951333.333333333,0,0,0,0,0,0,0,0
+Mash Cooler,0,0,0,0,0,0,0,0,0
+Fermentor,0,0,0,0,0,0,0,0,0
+Preheater,4447842.883011997,0,0,0,0,0,0,0,0
+Distillation Column,20281734.432838175,0,0,0,0,0,0,0,0
+Centrifuge,0,0,129.77500467031655,0,0,0,0,0,0
+Evaporator,1585658.4064861734,0,0,0,0,0,0,0,0
+Drum Dryer,8631087.997645075,0,0,0,0,0,0,0,0
+Rectifyer,0,0,0,0,0,0,0,0,0
+Bottler,1625752.8057600092,0,0,0,0,0,0,0,0
