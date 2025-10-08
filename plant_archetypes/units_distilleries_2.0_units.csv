@@ -1,0 +1,122 @@
+Miller
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Mash Bill,25,10000,0,0
+Electricity (Miller),25,0,0,1.0
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Milled Mash,25,10000,0,0
+Mash Tub
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Milled Mash,25,10000,0,0
+Water (Mash Tub),25,6250.0,0,0
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Mash,25,16250.0,0,0
+Mash Cooker
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Mash,25,16250.0,0,0
+Steam (Mash Cooker),25,1748.377581120944,3951333.333333333,0
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Beer Mash,25,16250.0,3556200.0,0
+Condensate (Mash Cooker),25,1748.377581120944,0,0
+Losses,Heat loss
+,395133.3333333333
+Mash Cooler
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Beer Mash,25,16250.0,3556200.0,0
+Cooling Water (Mash Cooler),5.0,51326.74390826565,0,0
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Cooled Beer Mash,25,16250.0,333393.75,0
+Water (Mash Cooler),20.0,51326.74390826565,3222806.25,0
+Fermentor
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Cooled Beer Mash,25,16250.0,333393.75,0
+Cooling Water (Fermentor),25,1669.5688147415137,-104832.22587761964,0
+Active Yeast,25,4.276315789473684,0,0
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Beer,25,15687.08847663167,434171.2141768762,0
+Carbon Dioxide,29.444,567.1878391578033,4531.6175722433245,0
+Water (Fermentor),25,1669.5688147415137,-209664.45175523925,0
+Reaction heat,
+,476.8558714998914
+Preheater
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Beer,25,15687.08847663167,434171.2141768762,0
+Steam (Preheater),25,1968.072072129202,4447842.883011997,0
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Condensate (Preheater),25,1968.072072129202,0,0
+Beer Feed,71.1,15687.08847663167,4437229.808887674,0
+Losses,Heat loss
+,444784.2883011997
+Distillation Column
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Beer Feed,71.1,15687.08847663167,4437229.808887674,0
+Steam (Distillation Column),25,8974.218775592113,20281734.432838175,0
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Tops,78.2,2709.5880096000155,508686.510077386,0
+Bottoms,95.0,12977.500467031656,3021730.6154240603,0
+Condensate (Distillation Column),25,8974.218775592113,0,0
+Losses,Heat loss
+,19793577.472262457
+Centrifuge
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Bottoms,95.0,12977.500467031656,3021730.6154240603,0
+Electricity (Centrifuge),25,0,0,129.77500467031655
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Wet Cake,95.0,12127.830497955285,2823890.225043266,0
+Thin Stillage,95.0,849.6699690763708,197840.39038079418,0
+Evaporator
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Thin Stillage,95.0,849.6699690763708,197840.39038079418,0
+Steam (Evaporator),25,701.6187639319352,1585658.4064861734,0
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Stillage,90,151.72678019220896,32973.39839679901,0
+Water (Evaporator),100,697.9431888841618,1591959.557821551,0
+Condensate (Evaporator),25,701.6187639319352,0,0
+Losses,Heat loss
+,158565.84064861736
+Drum Dryer
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Stillage,90,151.72678019220896,32973.39839679901,0
+Wet Cake,95.0,12127.830497955285,2823890.225043266,0
+Steam (Drum Dryer),25,3819.0654856836613,8631087.997645075,0
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+DDGS,107.0,8829.794523724071,1673122.4451223793,0
+Water (Drum Dryer),100,3449.7627544234233,8951720.376198253,0
+Condensate (Drum Dryer),25,3819.0654856836613,0,0
+Losses,Heat loss
+,863108.7997645075
+Rectifyer
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Tops,78.2,2709.5880096000155,508686.510077386,0
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Burbon,95,2709.5880096000155,508686.510077386,0
+Bottler
+Flows in
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Burbon,95,2709.5880096000155,508686.510077386,0
+Steam (Bottler),25,719.3596485663758,1625752.8057600092,0
+Flows out
+Name,Temperature,Mass flow rate,Heat flow rate,Electricity
+Bottled Burbon,20,2709.5880096000155,2134439.3158373954,0
+Condensate (Bottler),25,719.3596485663758,0,0
