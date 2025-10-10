@@ -358,31 +358,6 @@ agg_full_filtered <- agg_full %>%
   filter(naics_description %in% naics_complete) %>% 
   filter(state %in% states_of_interest)
 
-# --- Identify favorable (negative LCOH delta) cases ---
-neg_lcoh_summary <- agg_full_filtered %>%
-  filter(!is.na(mean_lcoh_delta), mean_lcoh_delta < 0) %>%
-  arrange(state, policy_label, mean_lcoh_delta)
-
-# --- Summarize by state and policy: total emissions where LCOH < 0 ---
-neg_by_state_policy_naics_tech <- neg_lcoh_summary %>%
-  group_by(state, policy_label, tech_clean, naics_description) %>%
-  summarise(
-    total_emissions = sum(sum_emissions_co2e_emissions_mmt, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  arrange(desc(total_emissions))
-
-
-# --- Summarize by naics, policy, and tech scenario across all states ---
-neg_by_policy_naics_tech <- neg_lcoh_summary %>%
-  group_by(naics_description, tech_clean, policy_label) %>%
-  summarise(
-    total_emissions = sum(sum_emissions_co2e_emissions_mmt, na.rm = TRUE),
-    n_states = n_distinct(state),
-    .groups = "drop"
-  ) %>%
-  arrange(desc(total_emissions))
-
 # Conversion constants
 KWH_PER_MMBTU <- 293.071  # 1 MMBtu = 293.071 kWh
 MMBTU_PER_MCF  <- 1.037   # 1 thousand cubic feet NG = 1.037 MMBtu
@@ -398,16 +373,22 @@ price_comparison <- param_df %>%
   ) %>%
   select(
     state,
-    ng_price,
-    ng_price_mmbtu,
-    elec_price_low,
-    elec_price_high,
-    elec_price_low_mmbtu,
-    elec_price_high_mmbtu,
     elec_to_ng_ratio_low,
     elec_to_ng_ratio_high
   ) %>%
   arrange(desc(elec_to_ng_ratio_low))
+
+agg_summary <- agg_full_filtered %>% 
+  group_by(state, policy_label, tech_clean, naics_description, mean_lcoh_delta) %>%
+  summarise(
+    total_emissions = sum(sum_emissions_co2e_emissions_mmt, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_emissions)) %>% 
+  filter(tech_clean != "Baseline") %>% 
+  left_join(price_comparison, by = "state")
+
+write.csv(agg_summary, "state_fact_sheets/data/modified/delta_lcoh_by_state_policy_naics_tech.csv")
 
 ### Graph Matrix ###
 
