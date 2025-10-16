@@ -104,7 +104,8 @@ ghgrp_facilities_naics_title = left_join(x = ghgrp_facilities,
          naics_title, ej_indicator, cogen_unit_emm_ind, cems_used, byproduct_fuels, year) |>
   left_join(y = relevant_naics, by = c("primary_naics")) |>
   filter(!is.na(keep_naics) | 
-           (primary_naics >=  322110 & primary_naics <= 322139)) |>
+           (primary_naics >=  322110 & primary_naics <= 322139) | 
+           primary_naics == 311230) |>
   select(-keep_naics) |>
   arrange(facility_id, year)
 
@@ -113,12 +114,15 @@ sf_use_s2(FALSE)
 ghgrp_facilities_naics_title = st_as_sf(ghgrp_facilities_naics_title, 
                                         coords = c("longitude", "latitude"), crs = 4326) |>
   st_join(egrid_subregions, left = TRUE) |>
-  st_drop_geometry(ghgrp_facilities_naics_title)
+  st_drop_geometry(ghgrp_facilities_naics_title) |>
+  left_join(y = county_to_div, by = c("county_fips")) |>        # add temp data
+  left_join(y = avg_temps, by = c("division_number", "year"))
 
 ghgrp_facilities_naics_title_2023 = ghgrp_facilities_naics_title |>
   filter(year==2023)
 
 ### Export ###
+setwd("/Users/Ben L/Documents/UCSB Bren/Research/2035 Initiative Industrial Decarbonization/Industrial-decarb/Industrial_Decarb_Database")
 write.xlsx(ghgrp_facilities_naics_title, "Output/descr_info_relevant_naics.xlsx")
 write.xlsx(ghgrp_facilities_naics_title_2023, "Output/descr_info_relevant_naics_2023.xlsx")
 
