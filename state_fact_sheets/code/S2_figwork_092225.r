@@ -15,6 +15,8 @@ library(glue)
 library(tidylog)
 library(forcats)
 
+setwd('/Users/eleanor/Documents/Industrial_Decarbonization/Industrial-decarb')
+
 # pull in the state emissions file & create ordered factor
 state_emissions_df.o <- 
   read_excel(glue("state_fact_sheets/data/modified/state-data/combined/combined_emissions_20250922.xlsx")) %>%
@@ -101,102 +103,98 @@ sector_colors <- c(
 scenario_colors <- c(
   "Baseline"   = "#fb9a99",
   "Scenario1"  = "#1f78b4",
-  "Scenario2"  = "#33a02c",
-  "Scenario3"  = "#a6cee3",
+  "Scenario3"  = "#33a02c",
+  "Scenario2"  = "#a6cee3",
   "Scenario4"  = "#b2df8a"
 )
 
 scenario_labels <- c(
   "Baseline"   = "Baseline",
   "Scenario1"  = "1: E-Boiler",
-  "Scenario2"  = "2: ASHP",
-  "Scenario3"  = "3: E-Boiler + EE",
+  "Scenario3"  = "2: E-Boiler + EE",
+  "Scenario2"  = "3: ASHP",
   "Scenario4"  = "4: ASHP + EE"
 )
 
-#### EMISSIONS BY STATE ####
+#### EMISSIONS ACROSS SCENARIOS AND GRID MIXES #### 
 
-
-
-# Filter, average best/worst, convert to MMtCO₂e
-base_emissions_df <- 
-  state_emissions_df %>%
-  # Let's just show the base emissions 
-  filter(clean_grid_scenario_label == "Current Grid Mix", 
-         tech_scenario == 'BaselineBest', 
-         pollutant_type == 'co2e') %>%
-  group_by(state) %>%
-  #slice_max(order_by = total_emissions, n = 3, with_ties = FALSE) %>%
-  ungroup() %>%
-  mutate(emissions_MMt = total_emissions/1000000) # for CO2e
-
-#### BASE EMISSIONS FIGURE ####
-co2e_by_state_plot <- 
-  base_emissions_df |> 
-  ggplot(aes(x = state, y = emissions_MMt, fill = industry_ordered)) + 
-  geom_col(position = position_dodge(width = 0.8, preserve = "single"), width = 0.6) + 
-  #facet_wrap(~ clean_grid_scenario_label, nrow = 1) + 
-  labs( x = NULL, y = "GHG Emissions (MMt CO2e)", fill = "Subsector" ) + 
-  scale_fill_manual(values = sector_colors) + 
-  scale_y_continuous(limits = c(0, max(base_emissions_df$emissions_MMt) * 1.1), expand = c(0, 0)) + 
-  # dynamic limit 
-  theme_bw(base_size = 14) + 
-  theme( 
-    legend.text = element_text(size = 10), 
-    legend.title = element_text(size = 11), 
-    legend.background = element_rect(color = "black", linewidth = 0.2) 
-    )
-
-
-#### EMISSIONS ACROSS SCENARIOS, ACROSS STATES #### 
-# Filter, average best/worst, convert to MMtCO₂e
 emissions_df <- 
   state_emissions_df %>%
-  # Which grid scenarios to highlight? 
-  filter(clean_grid_scenario_label == "Current Grid Mix", 
-         pollutant_type == 'co2e') %>%  
+  # Keep both grid scenarios you care about
+  filter(clean_grid_scenario_label %in% c("Current Grid Mix", "100% Cleaner Grid"),
+         pollutant_type == 'co2e') %>%
   mutate(
-    scenario_base = str_remove(tech_scenario, "Best|Worst")) %>%
-  # just going with the best case for now, which also pulls BaselineBest
+    scenario_base = str_remove(tech_scenario, "Best|Worst")
+  ) %>%
+  # Keep only the “Best” runs (this also gets BaselineBest)
   filter(str_detect(tech_scenario, 'Best')) %>%
-  group_by(state, industry_ordered, scenario_base) %>%
-  summarise(
-    total_emissions = sum(total_emissions)) %>%
-  ungroup() %>%
-  mutate(emissions_MMt = total_emissions/1000000) 
+  group_by(state, industry_ordered, scenario_base, clean_grid_scenario_label) %>%
+  summarise(total_emissions = sum(total_emissions, na.rm = TRUE), .groups = "drop") %>%
+  mutate(emissions_MMt = total_emissions / 1e6) %>% 
+  mutate(
+    emissions_MMt = total_emissions / 1e6,
+    clean_grid_scenario_label = ifelse(
+      clean_grid_scenario_label == "100% Cleaner Grid",
+      "100% Clean Grid",
+      clean_grid_scenario_label
+    )
+  )
 
+# Find top 3 emitting industries per state (under Current Grid Mix)
 top_sectors <- 
   emissions_df %>%
+  filter(clean_grid_scenario_label == "Current Grid Mix") %>%
   group_by(state, industry_ordered) %>%
   summarise(sector_total = sum(emissions_MMt), .groups = "drop") %>%
   group_by(state) %>%
   slice_max(order_by = sector_total, n = 3, with_ties = FALSE) %>%
   ungroup()
 
-# Step 3: Keep only those in emissions_df
+# Filter to those top sectors for both grid scenarios
 emissions_df <- 
   emissions_df %>%
-  semi_join(top_sectors, by = c("state", "industry_ordered"))
+  semi_join(top_sectors, by = c("state", "industry_ordered")) %>%
+  mutate(
+    # Factor for consistent scenario order
+    scenario_base = factor(
+      scenario_base,
+      levels = c("Baseline", "Scenario1", "Scenario3", "Scenario2", "Scenario4")
+    ),
+    # Optional: shorter labels for facet strips
+    clean_grid_scenario_label = factor(
+      clean_grid_scenario_label,
+      levels = c("Current Grid Mix", "100% Clean Grid")
+    )
+  )
 
+# Create the plot: facet by grid scenario (rows) and state (columns)
 emissions_scenario_plot <- 
   emissions_df |>
   ggplot(aes(x = industry_ordered, y = emissions_MMt, fill = scenario_base)) +
   geom_col(position = position_dodge(width = 0.8), width = 0.6) +
-  facet_wrap(~ state, nrow = 1, scales = "free_x", drop = TRUE) +
+  facet_grid(clean_grid_scenario_label ~ state, scales = "free_x", switch = "y") +
   labs(
     x = NULL,
-    y = "GHG Emissions (MMt CO2e)",
+    y = "GHG Emissions (MMt CO₂e)",
     fill = "Tech Scenario"
   ) +
-  scale_fill_manual(values = scenario_colors, labels = scenario_labels) +
-  scale_y_continuous(limits = c(0, max(emissions_df$emissions_MMt) * 1.1), expand = c(0, 0)) + # dynamic limit
+  scale_fill_manual(
+    values = scenario_colors,
+    labels = scenario_labels
+  ) +
+  scale_y_continuous(
+    limits = c(0, max(emissions_df$emissions_MMt) * 1.1),
+    expand = c(0, 0)
+  ) +
   theme_bw(base_size = 14) +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1, size = 9), 
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 9),
+    strip.text.y.left = element_text(angle = 0, face = "bold"),
     legend.text = element_text(size = 10),
     legend.title = element_text(size = 11),
     legend.background = element_rect(color = "black", linewidth = 0.2)
   )
+
 
 #### LCOH BY SUBSECTOR ####
 lcoh_tech_base <- 

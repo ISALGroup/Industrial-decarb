@@ -3,7 +3,6 @@
 #### SET-UP ####
 library(readxl)
 library(readr)
-library(Hmisc)
 library(dplyr)
 library(tidyr)
 library(tidylog)
@@ -12,7 +11,7 @@ library(janitor)
 library(glue)
 
 # Import electricity prices
-eia_elec <- 
+eia_elec_range <- 
   read_xlsx("state_fact_sheets/data/raw/EIA table_8.xlsx", skip = 2) |>
   slice_head(n = -48) |> # remove some stuff not needed at the end
   clean_names() |>
@@ -32,19 +31,19 @@ eia_elec <-
     .groups = "drop"
   )
 
-# eia_elec <- 
-#   read_csv('state_fact_sheets/data/raw/EIA Annual Industrial Electricity Prices.csv') |>
-#   mutate(
-#     # get the state abbreviations
-#     state_full = sub(".*: ", "", description), 
-#     state = state.abb[match(state_full, state.name)], 
-#     
-#     # convert from cents/kwh to $/kwh, 
-#     `2024` = `2024`/100
-#   ) |>
-#   rename(elec_price = `2024`) |>
-#   select(state, elec_price) |>
-#   filter(!state == 'DC')
+eia_elec <-
+  read_csv('state_fact_sheets/data/raw/EIA Annual Industrial Electricity Prices.csv') |>
+  mutate(
+    # get the state abbreviations
+    state_full = sub(".*: ", "", description),
+    state = state.abb[match(state_full, state.name)],
+
+    # convert from cents/kwh to $/kwh,
+    `2024` = `2024`/100
+  ) |>
+  rename(elec_price = `2024`) |>
+  select(state, elec_price) |>
+  filter(!state == 'DC')
 
 # Import NG prices 
 eia_ng <- 
@@ -68,6 +67,22 @@ eia_ng <-
   # Keep only the most recent non-missing value per state
   group_by(state) |>
   summarise(ng_price = last(na.omit(price)), .groups = "drop")
+
+# merge, input other parameters 
+param_range <- 
+  left_join(eia_elec_range, eia_ng, by = 'state') |>
+  mutate(
+    r = 0.065, 
+    t = 30, 
+    ngboiler_om_low	= 0.03, 
+    ngboiler_om_high	= 0.06, 
+    eboiler_om_low	= 0.01, 
+    eboiler_om_high = 0.01, 
+    hthp_om_low = 0.01, 
+    hthp_om_high = 0.05
+  )
+
+write_csv(param_range, 'state_fact_sheets/data/parameters_elec_range.csv') 
 
 # merge, input other parameters 
 param <- 
