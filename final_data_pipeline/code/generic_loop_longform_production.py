@@ -10,14 +10,14 @@ import numpy as np
 import os
 os.chdir('C:/Users/Antoine/Desktop/final_data_pipeline')
 
-# generic_naics_list = [311221, 311224, 311225, 311230, 311313, 311314, 311411, 311422,
-#                       311423, 311511, 311513, 311514, 311611, 311613, 311615, 311942,
-#                       312120, 312140, 322291, 325110, 325120, 325180, 325193, 325194,
-#                       325211, 325212, 325311, 325312]
-generic_naics_list = [311221, 311224, 311225,  311313, 311314, 311411, 311422,
+generic_naics_list = [311221, 311224, 311225, 311230, 311313, 311314, 311411, 311422,
                       311423, 311511, 311513, 311514, 311611, 311613, 311615, 311942,
                       312120, 312140, 322291, 325110, 325120, 325180, 325193, 325194,
                       325211, 325212, 325311, 325312]
+# generic_naics_list = [311221, 311224, 311225,  311313, 311314, 311411, 311422,
+#                       311423, 311511, 311513, 311514, 311611, 311613, 311615, 311942,
+#                       312120, 312140, 322291, 325110, 325120, 325180, 325193, 325194,
+#                       325211, 325212, 325311, 325312]
 
 for naics in generic_naics_list:
 
@@ -28,10 +28,10 @@ for naics in generic_naics_list:
     
     
     #Load data
-    unit_emissions = pd.read_excel('data/Facility_and_Unit_Emissions_Database_2023_v3.xlsx', sheet_name= 'unit_emissions')
+    unit_emissions = pd.read_excel('data/Facility_and_Unit_Emissions_Database_2023_v4.xlsx', sheet_name= 'unit_emissions')
     unit_emissions = unit_emissions[unit_emissions['primary_naics'] == naics]
     unit_emissions['unit_type'] = unit_emissions['unit_type'].fillna(value = 'Other')
-    facility_info = pd.read_excel('data/Facility_and_Unit_Emissions_Database_2023_v3.xlsx', sheet_name= 'descr_info')
+    facility_info = pd.read_excel('data/Facility_and_Unit_Emissions_Database_2023_v4.xlsx', sheet_name= 'descr_info')
     facility_info = facility_info[facility_info['primary_naics'] == naics]
     
     fuel_emission_factors = pd.read_excel('data/ghg_emission_factors_epa_2025.xlsx', sheet_name = 'Conversion table') #in kgCOeq. per MMBTU
@@ -335,9 +335,11 @@ for naics in generic_naics_list:
     
     
     ### Add in average temperature at that location for air-source hp COP calculation TO RE DO WITH BEN S HELP FOR GETTING COUNTY AVERAGE TEMP AT THE LOCATION AVERAGE TEMPS SHOULD OVERLAP WITH PLANT OPERATION HOURS
-    
-    added_process_temps['average_county_temperature'] = 10
-    
+    added_process_temps = pd.merge(added_process_temps, facility_info[['facility_id', 'division_average_temp']], how = 'left', on = 'facility_id')
+    added_process_temps['division_average_temp'] = (5./9.) * (added_process_temps['division_average_temp'] - 32)
+    added_process_temps = added_process_temps.rename(columns={'division_average_temp': 'average_county_temperature'})
+#    added_process_temps['average_county_temperature'] = 10
+    added_process_temps = added_process_temps.fillna({'average_county_temperature' : 10})
     ### Add in average hours worked per year at the plant TO RE DO AT SOME POINT WITH CENSUS DATA? ALSO AVERAGE TEMPS SHOULD OVERLAP WITH PLANT OPERATION HOURS
     
     added_process_temps['yearly_hours_operation'] = 8000

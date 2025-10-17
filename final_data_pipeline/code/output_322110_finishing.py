@@ -18,10 +18,10 @@ kraft_non_electrifiable_fuels = pd.read_excel('data/322110_finishing_process_par
 
 
 #Load data
-unit_emissions = pd.read_excel('data/Facility_and_Unit_Emissions_Database_2023_v3.xlsx', sheet_name= 'unit_emissions')
+unit_emissions = pd.read_excel('data/Facility_and_Unit_Emissions_Database_2023_v4.xlsx', sheet_name= 'unit_emissions')
 unit_emissions = unit_emissions[unit_emissions['primary_naics'] == 322110]
 unit_emissions['unit_type'] = unit_emissions['unit_type'].fillna(value = 'Other')
-facility_info = pd.read_excel('data/Facility_and_Unit_Emissions_Database_2023_v3.xlsx', sheet_name= 'descr_info')
+facility_info = pd.read_excel('data/Facility_and_Unit_Emissions_Database_2023_v4.xlsx', sheet_name= 'descr_info')
 facility_info = facility_info[facility_info['primary_naics'] == 322110]
 fuel_emission_factors = pd.read_excel('data/ghg_emission_factors_epa_2025.xlsx', sheet_name = 'Conversion table') #in kgCOeq. per MMBTU
 unit_emissions = unit_emissions.drop(['capacity', 'capacity_utiliziation', 'vintage',	'floor_space',	'temperature',	'steam_generation_est', 'electricity_generation_est',	'prime_mover_type', 'hrsg_bypass' , 'unit_age', 'start_up',  'mfgr', 'orig_m_lb_ds_day', 'current_rating', 'no_drums', 'floor_d_decant_sf_slope_to_front_sr_slope_to_rear', 'design_psig', 'operate_psig', 'superheat_f'], axis = 1)
@@ -344,7 +344,11 @@ added_process_temps.to_excel('output/process_temps_added.xlsx')
 
 ### Add in average temperature at that location for air-source hp COP calculation TO RE DO WITH BEN S HELP FOR GETTING COUNTY AVERAGE TEMP AT THE LOCATION AVERAGE TEMPS SHOULD OVERLAP WITH PLANT OPERATION HOURS
 
-added_process_temps['average_county_temperature'] = 10
+added_process_temps = pd.merge(added_process_temps, facility_info[['facility_id', 'division_average_temp']], how = 'left', on = 'facility_id')
+added_process_temps['division_average_temp'] = (5./9.) * (added_process_temps['division_average_temp'] - 32)
+added_process_temps = added_process_temps.rename(columns={'division_average_temp': 'average_county_temperature'})
+#    added_process_temps['average_county_temperature'] = 10
+added_process_temps = added_process_temps.fillna({'average_county_temperature' : 10})
 
 ### Add in average hours worked per year at the plant TO RE DO AT SOME POINT WITH CENSUS DATA? ALSO AVERAGE TEMPS SHOULD OVERLAP WITH PLANT OPERATION HOURS
 
@@ -448,7 +452,7 @@ waste_heat_pump_df = waste_heat_pump_df.drop(columns=['subpart', 'has_chem_recov
 
 electrification_df = waste_heat_pump_df.copy()
 electrification_df['unit_ghg_emissions'] = electrification_df['ghg_quantity'] * electrification_df['process_unit_heat_demand'] / electrification_df['process_heat']
-#electrification_df.to_excel('output/individual_ghg.xlsx')
+electrification_df.to_excel('output/322110_finishing_longform.xlsx')
 
 
 
@@ -485,7 +489,7 @@ groupd_non_elec = non_elec_df.groupby(['primary_naics', 'facility_id', 'reportin
                                   'whp_inlet_t', 'average_county_temperature',
                                   'yearly_hours_operation'], dropna=False,as_index=False).agg({'Temperature' : 'max','unit_ghg_emissions' : 'sum', 'process_unit_heat_demand' : 'sum'})
 
-groupd_non_elec.to_excel('output/322110_finishing_elec.xlsx')
+
 
 ### group direct electrification
 
