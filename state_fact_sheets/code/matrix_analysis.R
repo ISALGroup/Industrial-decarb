@@ -603,7 +603,7 @@ state_order <- plot_df2 %>%
 plot_df2 <- plot_df2 %>%
   mutate(state = factor(state, levels = state_order))
 
-# ---------- sector lookup and palette seeds (your requested colors) ----------
+# ---------- sector lookup and palette seeds ----------
 naics_sector_lookup <- ghgrp_filtered_df %>%
   distinct(naics_description, sector) %>%
   filter(!is.na(naics_description))
