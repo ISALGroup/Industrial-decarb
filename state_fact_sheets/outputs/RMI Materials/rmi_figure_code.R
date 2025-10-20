@@ -4,8 +4,8 @@ library(readr)
 library(ggplot2)
 library(dplyr)
 
-elec_plot_df <- read_csv('elec_plot_data.csv')
-param_rmi <- read_csv('rmi_parameters.csv')
+elec_plot_df <- read_csv('state_fact_sheets/outputs/RMI Materials/elec_plot_data.csv')
+param_rmi <- read_csv('state_fact_sheets/outputs/RMI Materials/rmi_parameters.csv')
 
 ##### ILLINOIS PLOT #######
 

@@ -254,6 +254,7 @@ facility_emissions_df <-
     noelec_ghg_emissions = sum(if_else(combustion_unit_electrifiable == 'N', ghg_quantity, 0), na.rm = TRUE),
   )
 
+# Calculate full & boiler scenarios separately
 facility_full_df <- 
   unit_scenario_df |>
   filter(combustion_unit_category %in% c('generic', 'specific (incl)'), 
@@ -305,8 +306,7 @@ facility_full_df <-
     .groups = "drop"
   ) 
 
-# I don't think it matters, but calculating boiler-only separately to be safe
-# (Maybe weirdness about different vector lengths when grouping) 
+
 facility_boiler_df <-
   unit_scenario_df |>
   filter(combustion_unit_category == 'generic', 
@@ -513,7 +513,7 @@ facility_lcoh_df <-
     )) |>
   select(-any_of(setdiff(names(param), "state")))
 
-#### LCOH BY TECH SCENARIO ####
+#### FIG: LCOH BY TECH SCENARIO ####
 ng_boiler_min <-
   facility_lcoh_df |>
   filter(tech_scenario == "ng_boiler", scenario_rank == "best") |>
@@ -583,7 +583,7 @@ tech_lcoh_plot <-
 
 tech_lcoh_plot
   
-#### LCOH BY TECH SCENARIO V2 ####
+#### FIG: LCOH BY TECH SCENARIO V2 ####
 tech_lcoh_data_2 <- 
   facility_lcoh_df %>%
   filter(
@@ -645,7 +645,7 @@ tech_lcoh_plot_2 <-
 
 tech_lcoh_plot_2
 
-#### DELTA LCOH PLOT ####
+#### FIG: DELTA LCOH PLOT ####
 
 baseline_lcoh <- 
   facility_lcoh_df |>
@@ -733,7 +733,7 @@ delta_lcoh_plot   <-
 delta_lcoh_plot
 
 
-#### SECTOR/POLICY LCOH FIGURE  #####
+#### FIG: SECTOR/POLICY LCOH FIGURE  #####
 
 # select policy scenarios to show 
 fig_policies <- c(
@@ -791,7 +791,7 @@ sector_policy_lcoh_plot <-
 
 sector_policy_lcoh_plot
 
-#### SUBSECTOR LCOH FIGURE  #####
+#### FIG: SUBSECTOR LCOH FIGURE  #####
 subsector_lcoh_data <- 
   facility_lcoh_df |>
   filter(str_detect(tech_scenario, "hp_full_ee"))
@@ -833,7 +833,7 @@ subsector_lcoh_plot <-
 
 subsector_lcoh_plot
 
-#### CAPEX PLOT ####
+#### FIG: CAPEX PLOT ####
 capex_kw_data <- 
   facility_lcoh_df |>
   filter(policy_label == 'No Policy') |>
@@ -949,3 +949,11 @@ check4 <-
 
 write_csv(check4, '/Users/nmariano/Downloads/eldorado.csv')
 
+
+
+unit_combined_df |>
+  filter(sector = pulp & paper) |>
+  group_by(process_unit) |>
+  summarize(
+    total_demand = sum(process_unit_heat_demand) 
+  )
