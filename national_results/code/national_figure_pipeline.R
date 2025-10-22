@@ -15,6 +15,8 @@ library(stringr)
 library(janitor)
 library(glue)
 library(ggplot2)
+library(ggraph)
+library(patchwork)
 
 # Tech scenario input 
 longform <- 
@@ -733,6 +735,141 @@ delta_lcoh_plot   <-
 delta_lcoh_plot
 
 
+#### FIG: DELTA LCOH BUBBLE PLOTS ####
+baseline_bubble <- 
+  facility_lcoh_df |>
+  filter(policy_label == 'No Policy', 
+         tech_scenario == 'ng_full', 
+         scenario_rank == 'worst'
+         ) |>
+  rename(lcoh_ng = lcoh) |>
+  select(facility_id, lcoh_ng)
+
+delta_bubble_data_good <- 
+  facility_lcoh_df |>
+  filter(
+    policy_label == "No Policy", 
+    tech_scenario %in% c('hp_full_ee') , 
+    scenario_rank == 'best'
+  ) |>
+  left_join(
+    baseline_bubble, by = 'facility_id'
+  ) |>
+  mutate(lcoh_delta = lcoh - lcoh_ng) |>
+  group_by(state, industry_clean) |>
+  summarize(
+    # Main info vars 
+    industry_clean = first(industry_clean), 
+    sector = first(sector), 
+    state = first(state),
+    
+    # UNWEIGHTED lcoh delta
+    lcoh_delta = mean(lcoh_delta, na.rm = T), 
+    base_emissions_co2e = sum(base_emissions_co2e, na.rm = T)
+  ) |>
+  ungroup() |>
+  mutate(name = paste(state, industry_clean, sep = " "), 
+         label = str_wrap(name, width = 10)) |>
+  select(name, label, lcoh_delta, base_emissions_co2e) |>
+  slice_min(order_by = lcoh_delta, n = 15) |>
+  tbl_graph(nodes = _, edges = NULL) 
+
+delta_bubble_data_bad <- 
+  facility_lcoh_df |>
+  filter(
+    policy_label == "No Policy", 
+    tech_scenario %in% c('hp_full_ee') , 
+    scenario_rank == 'best'
+  ) |>
+  left_join(
+    baseline_bubble, by = 'facility_id'
+  ) |>
+  mutate(lcoh_delta = lcoh - lcoh_ng) |>
+  group_by(state, industry_clean) |>
+  summarize(
+    # Main info vars 
+    industry_clean = first(industry_clean), 
+    sector = first(sector), 
+    state = first(state),
+    
+    # UNWEIGHTED lcoh delta
+    lcoh_delta = mean(lcoh_delta, na.rm = T), 
+    base_emissions_co2e = sum(base_emissions_co2e, na.rm = T)
+  ) |>
+  ungroup() |>
+  mutate(name = paste(state, industry_clean, sep = " "), 
+         label = str_wrap(name, width = 10)) |>
+  select(name, label, lcoh_delta, base_emissions_co2e) |>
+  slice_max(order_by = lcoh_delta, n = 15) |>
+  tbl_graph(nodes = _, edges = NULL) 
+
+# --- compute shared limits across both graphs ---
+fill_lims <- range(c(delta_bubble_data_good %N>% pull(lcoh_delta),
+                     delta_bubble_data_bad %N>% pull(lcoh_delta)), na.rm = TRUE)
+size_lims <- range(c(delta_bubble_data_good %N>% pull(base_emissions_co2e),
+                     delta_bubble_data_bad %N>% pull(base_emissions_co2e)), na.rm = TRUE)
+
+# --- shared scales ---
+fill_scale <- scale_fill_gradient2(
+  limits = fill_lims,
+  low = "#1f78b4", mid = "white", high = "#fb9a99", midpoint = 0,
+  name = "Δ LCOH ($/mmbtu)"
+)
+size_scale <- scale_size_continuous(
+  limits = size_lims,
+  range = c(3, 15),
+  name = "Base CO₂e emissions",
+  guide = "none"     
+)
+
+# --- small helper function ---
+base_plot <- function(graph, title, show_legend = TRUE) {
+  ggraph(graph, layout = "circlepack", weight = base_emissions_co2e) +
+    geom_node_circle(
+      aes(fill = lcoh_delta, size = base_emissions_co2e),
+      color = "grey40", linewidth = 0.3, alpha = 0.9
+    ) +
+    geom_node_text(
+      aes(label = label), size = 3, color = "black",
+      hjust = 0.5, vjust = 0.5, check_overlap = TRUE
+    ) +
+    fill_scale + size_scale +
+    ggtitle(title) +
+    theme_void() +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      legend.position = if (show_legend) "right" else "none"
+    ) +
+    coord_equal()
+}
+
+p1 <- base_plot(delta_bubble_data_good, "Most Competitive")
+p2 <- base_plot(delta_bubble_data_bad, "Least Competitive")
+
+
+(p1 + p2) + 
+  plot_layout(guides = "collect") &
+  theme(legend.position = "right")
+
+
+# edges <- 
+#   delta_bubble_data |> 
+#   mutate(node = paste(state, industry_clean, sep = "_")) |> 
+#   select(from = sector, to = node)
+# 
+# # Combine with unique nodes (so sectors appear as roots)
+# nodes <- 
+#   tibble(name = unique(c(edges$from, edges$to))) |> 
+#   left_join(delta_bubble_data |> mutate(name = paste(state, industry_clean, sep = "_")), by = "name")
+# 
+# graph <- tbl_graph(nodes = nodes, edges = edges)
+
+# ggraph(graph, layout = "circlepack", weight = base_emissions_co2e) +
+#   geom_node_circle(aes(fill = delta_lcoh, r = size), color = "grey30", alpha = 0.8) +
+#   scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+#   geom_node_text(aes(label = name), repel = TRUE, size = 3) +
+#   theme_void()
+
 #### FIG: SECTOR/POLICY LCOH FIGURE  #####
 
 # select policy scenarios to show 
@@ -906,6 +1043,20 @@ capex_kw_plot <-
 capex_plot_kw
 
 #### DATA CHECKS ####
+
+check <- 
+  unit_combined_df |>
+  group_by(facility_id) |>
+  summarize(
+    sector = first(sector), 
+    nonboiler_elec_unit_dum = max(nonboiler_elec_unit_dum, na.rm = TRUE)
+  ) |>
+  group_by(sector) |>
+  summarize(
+    n_facilities = n(),
+    n_nonboiler = sum(nonboiler_elec_unit_dum),
+    prop_nonboiler = mean(nonboiler_elec_unit_dum)
+  )
 
 check <-
   unit_combined_df |>
