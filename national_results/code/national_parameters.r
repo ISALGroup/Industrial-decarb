@@ -46,11 +46,14 @@ eia_ng <-
     state_full = sub(" Natural Gas.*", "", full_description),
     state = state.abb[match(state_full, state.name)]
   ) |>
+  # let's just use the last five years
+  filter(Date >= as.Date("2020-01-01")) %>%  
   # Get high/low estimates
   filter(!is.na(price)) |>
   arrange(state, Date) %>%
   group_by(state) %>%
   mutate(
+    # how much is price changing year over year? treat this as a distribution
     log_return = log(price) - log(lag(price))
   ) %>%
   summarise(
@@ -59,7 +62,9 @@ eia_ng <-
     .groups = "drop"
   ) %>%
   mutate(
-    z = 1.28,  # for P10/P90 bounds
+    # Z score for 10/90
+    z = 1.28,  
+    # get 10/90 percentile in the distribution
     ng_price_low  = ng_price_latest * exp(-z * sigma),
     ng_price_high = ng_price_latest * exp( z * sigma)
   ) %>%
