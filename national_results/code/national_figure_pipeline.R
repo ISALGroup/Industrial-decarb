@@ -15,8 +15,10 @@ library(stringr)
 library(janitor)
 library(glue)
 library(ggplot2)
+library(ggforce)
 library(ggraph)
 library(patchwork)
+library(purrr)
 
 # Tech scenario input 
 longform <- 
@@ -509,10 +511,17 @@ facility_lcoh_df <-
       elec_discount 
     ), 
     
-    policy_label = paste0("Capex: -", capex_subsidy * 100, "%, Elec: -", elec_discount * 100, "%"), 
-    policy_label = if_else(
-      policy_label == 'Capex: -0%, Elec: -0%', 'No Policy', policy_label
-    )) |>
+    policy_label = case_when(
+      elec_discount > 0 & capex_subsidy > 0 ~ 
+        paste0("Capex: -", capex_subsidy * 100, "%, Elec: -", elec_discount * 100, "%"),
+      elec_discount == 0 & capex_subsidy > 0 ~
+        paste0("Capex: -", capex_subsidy * 100, "%"),
+      elec_discount > 0 & capex_subsidy == 0 ~
+        paste0("Elec: -", capex_subsidy * 100, "%"),
+      elec_discount == 0 & capex_subsidy == 0 ~ 
+        'No Policy' 
+    )
+  )|>
   select(-any_of(setdiff(names(param), "state")))
 
 #### FIG: LCOH BY TECH SCENARIO ####
@@ -735,7 +744,7 @@ delta_lcoh_plot   <-
 delta_lcoh_plot
 
 
-#### FIG: DELTA LCOH BUBBLE PLOTS ####
+#### FIG: DELTA LCOH BUBBLE PLOT ####
 baseline_bubble <- 
   facility_lcoh_df |>
   filter(policy_label == 'No Policy', 
@@ -870,6 +879,278 @@ p2 <- base_plot(delta_bubble_data_bad, "Least Competitive")
 #   geom_node_text(aes(label = name), repel = TRUE, size = 3) +
 #   theme_void()
 
+#### FIG: STATE EMISSIONS "IN THE MONEY" ####
+fig_policies <- c(
+  "Total Emissions", 
+  "No Policy",
+  "Capex: -100%, Elec: -0%", 
+  "Capex: -0%, Elec: -25%", 
+  "Capex: -0%, Elec: -50%"
+)
+
+fig_states <- c(
+  'CA', 'CO', 'FL', 'IA', 'IL', 
+  'LA', 'MD', 'ME', 'MI', 'MN', 
+  'NY', 'OH', 'OR', 'TX', 'WA', 'WI'
+)
+
+
+lcoh_tech_base <- 
+  facility_lcoh_df %>%
+  filter(
+    policy_label == "No Policy" &
+    tech_scenario == 'ng_full' &
+    scenario_rank == 'best'
+  ) %>%
+  select(facility_id, lcoh)
+
+eim_df <- 
+  facility_lcoh_df %>%
+  filter(
+    tech_scenario == 'hp_full_ee' &
+    scenario_rank == 'best' &
+    policy_label %in% fig_policies & 
+    state %in% fig_states
+  ) %>%
+  left_join(
+    lcoh_tech_base |> rename(lcoh_ng = lcoh),
+    by = 'facility_id'
+  ) %>%
+  mutate(
+    in_money = if_else(lcoh < lcoh_ng, 1, 0), 
+    policy_label = factor(policy_label, levels = fig_policies),
+    state = factor(state, levels = rev(sort(unique(as.character(state)))))
+  ) %>%
+  group_by(state, policy_label) %>%
+  summarize(
+    eim = sum(elec_ghg_emissions[in_money == 0], #+ 
+                # noelec_ghg_emissions[in_money == 0] +
+                # biogenic_ghg_emissions[in_money == 0],
+              na.rm = TRUE),
+    total_co2e_ghg = sum(base_emissions_co2e, na.rm = TRUE),
+    total_elec_ghg = sum(elec_ghg_emissions, na.rm = TRUE),
+    .groups = "drop_last"
+  ) %>%
+  # ✅ Drop consecutive duplicates within each state
+  group_by(state) %>%
+  group_modify(~ {
+    total_val <- mean(.x$total_elec_ghg, na.rm = TRUE)
+    bind_rows(.x, tibble(state = unique(.x$state),
+                         policy_label = "Total Emissions",
+                         eim = total_val))
+  }) %>%
+  arrange(desc(state), factor(policy_label, levels = fig_policies)) %>%
+  filter(eim != lag(eim) | is.na(lag(eim))) %>%
+  ungroup() %>%
+  mutate(
+    eim_Mt = eim / 1e6,
+    eim_prop = (eim / total_elec_ghg) * 100, 
+    policy_label = factor(policy_label, levels = fig_policies)
+  ) 
+
+eim_plot <- 
+  ggplot() +
+  
+  # geom_col(data = eim_df,
+  #          aes(x = total_elec_ghg, y = state)) +
+  
+  geom_col(data = eim_df,
+           aes(x = eim, y = state, fill = policy_label),
+           position = position_dodge(width = 0.5), 
+           width = 0.2) +
+
+  #scale_color_manual(values = sector_colors) +
+  #scale_y_continuous(limits = c(5, 21)) +
+  
+  scale_fill_manual(
+    values = c(
+      "Total Emissions" = "grey30",
+      "No Policy" = "#1b9e77",
+      "Capex: -100%, Elec: -0%" = "#d95f02",
+      "Capex: -0%, Elec: -25%" = "#7570b3", 
+      "Capex: -0%, Elec: -50%" = "lightblue"
+      
+    ),
+    breaks = c(
+      "Total Emissions",
+      "No Policy",
+      "Capex: -100%, Elec: -0%",
+      "Capex: -0%, Elec: -25%", 
+      "Capex: -0%, Elec: -50%"
+    ),
+    labels = c(
+      "Total Emissions",
+      "No Policy",
+      "Capex: -100%, Elec: -0%",
+      "Capex: -0%, Elec: -25%", 
+      "Capex: -0%, Elec: -50%"
+    )
+  ) +
+  
+  labs(x = "Emissions (MtCO2e)", y = NULL, fill = "Policy" ) + 
+  
+  theme_bw(base_size = 14) +
+  theme(
+    #legend.position = c(0.7, 0.95),
+    #legend.justification = c(0, 1),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 12),
+    legend.background = element_rect(color = "black", linewidth = 0.2)
+  )
+
+eim_plot
+
+#### FIG: PAYBACK ####
+
+fig_statesubs <- 
+  c(
+    'WA Pulp & Paper', 
+    'NY Spices', 
+    'PA Ethyl Alcohol', 
+    'MD Rendering' 
+  )
+
+fig_policies <- 
+  c(
+    "Elec -50%", 
+    "Elec -25%", 
+    "Capex -100%", 
+    "Capex -50%", 
+    "No Policy"
+  )
+
+fig_state_colors <- list(
+  "WA Pulp & Paper" = c(
+    "Elec -50%"   = "#E1EAC6",
+    "Elec -25%"   = "#ACBF7C",
+    "Capex -100%" = "#8DA452",
+    "Capex -50%"  = "#6D7D33",
+    "No Policy"    = "#3B471C"
+  ),
+  "NY Spices" = c(
+    "Elec -50%"   = "#FDE6E0",
+    "Elec -25%"   = "#F8B3A4",
+    "Capex -100%" = "#F27D63",
+    "Capex -50%"  = "#EF5645",
+    "No Policy"    = "#9B2C24"
+  ),
+  "MD Rendering" = c(
+    "Elec -50%"   = "#FDE6E0",
+    "Elec -25%"   = "#F8B3A4",
+    "Capex -100%" = "#F27D63",
+    "Capex -50%"  = "#EF5645",
+    "No Policy"    = "#9B2C24"
+  ),
+  "PA Ethyl Alcohol" = c(
+    "Elec -50%"   = "#D4EEF3",
+    "Elec -25%"   = "#A0D7E0",
+    "Capex -100%" = "#5EBAC3",
+    "Capex -50%"  = "#09847A",
+    "No Policy"    = "#064E58"
+  )
+)
+
+
+policy_grid <- 
+  expand.grid(
+    capex_subsidy = c(0, .5, 1),
+    elec_discount = c(0, .25, .5)
+  )
+
+payback_data_ng <- 
+  facility_scenario_df |>
+  filter(
+    tech_scenario == 'ng_full' & 
+      scenario_rank == 'best'
+  ) |>
+  left_join(param, by = 'state') |>
+  mutate(
+    opex_ng = ((heat_mmbtu_orig/.9) * ng_price) + (ngboiler_om_low * capex)
+  ) |>
+  select(facility_id, opex_ng)
+
+payback_data_hp <- 
+  facility_scenario_df |>
+  crossing(policy_grid) |>
+  mutate(
+    policy_label = case_when(
+      capex_subsidy == 0 & elec_discount == 0 ~ 'No Policy', 
+      capex_subsidy == .5 & elec_discount == 0 ~ "Capex -50%",
+      capex_subsidy == 1 & elec_discount == 0 ~ "Capex -100%",
+      capex_subsidy == 0 & elec_discount == .25 ~ "Elec -25%",
+      capex_subsidy == 0 & elec_discount == .5 ~ "Elec -50%",
+      TRUE ~ 'NA'
+    )
+  )|>
+  filter(
+    tech_scenario == 'hp_full_ee' & 
+      scenario_rank == 'best' & 
+      policy_label %in% fig_policies
+  ) |>
+  left_join(param, by = 'state') |>
+  mutate(
+    opex_hp = (change_in_electricity_demand_kwh * (elec_price * (1-elec_discount))) + (hthp_om_low * capex)
+  )
+
+payback_data <- 
+  left_join(payback_data_hp, payback_data_ng, by = 'facility_id') |>
+  mutate(
+    annual_savings = opex_ng - opex_hp,
+    payback_years = if_else(annual_savings > 0, capex / annual_savings, NA_real_)
+  ) |>
+  group_by(state, industry_clean, policy_label) |>
+  summarize(
+    capex = mean(capex, na.rm = T),
+    opex_ng = mean(opex_ng, na.rm = T), 
+    opex_hp = mean(opex_hp, na.rm = T), 
+    annual_savings = mean(annual_savings, na.rm = T),
+    payback_years = mean(payback_years, na.rm = T)
+  ) |>
+  ungroup() |>
+  mutate(
+    statesub = paste(state, industry_clean, sep = " "), 
+    policy_label = factor(policy_label, levels = fig_policies)
+  ) |>
+  filter(statesub %in% fig_statesubs) |>
+  arrange(statesub, factor(policy_label, levels = fig_policies)) |>
+  group_by(statesub) |>
+  mutate(radius = row_number()) |>
+  ungroup()
+
+
+#payback_fig <- 
+plots <- map(fig_statesubs, function(s) {
+  ggplot(payback_data |> filter(statesub == s)) +
+    geom_link(aes(x = radius, xend = radius,
+                  y = 0, yend = 1),
+              size = 5, lineend = "round", color = "grey95") +
+    geom_link(aes(x = radius, xend = radius,
+                  y = 0, yend = payback_years),
+              size = 5, lineend = "round", color = "grey20") +
+    geom_link(aes(x = radius, xend = radius,
+                  y = 0, yend = payback_years, color = policy_label),
+              size = 4, lineend = "round") +
+    geom_label(aes(radius, y = 1, 
+                   label = paste0(policy_label, ": ", round(payback_years, 2), "yrs"),
+                   hjust = 1.1), size = 2.5) +
+    scale_x_continuous(limits = c(0, 5)) +
+    scale_y_continuous(limits = c(0, 1)) +
+    scale_color_manual(values = fig_state_colors[[s]]) +
+    guides(color = "none") +
+    coord_polar(theta = "y") +
+    theme_void() +
+    theme(
+      plot.margin = margin(10, 10, 10, 10)  # top, right, bottom, left (in "pt" by default)
+    ) +
+    ggtitle(s)
+})
+
+# Combine into 2×2 grid
+(plots[[1]] | plots[[2]]) /
+(plots[[3]] | plots[[4]])
+
+payback_fig
+
 #### FIG: SECTOR/POLICY LCOH FIGURE  #####
 
 # select policy scenarios to show 
@@ -969,6 +1250,55 @@ subsector_lcoh_plot <-
   )
 
 subsector_lcoh_plot
+
+#### FIG: ABATEMENT COST CURVE ####
+fig_policies <- 
+  c(
+    "Elec -50%", 
+    "Elec -25%", 
+    "Capex -100%", 
+    "Capex -50%", 
+    "No Policy"
+  )
+
+acc_data <- 
+  facility_lcoh_df |>
+  filter(tech_scenario %in% c('ng_full', 'hp_full_ee') & 
+         scenario_rank == "best" & 
+         policy_label %in% fig_policies) |>
+  group_by(industry_clean, technology_scenario)
+  select(facility_id, state, industry_clean, policy_label,
+         lcoh, lcoh_ng, base_emissions_co2e, elec_ghg_emissions, noelec_ghg_emissions) |>
+  mutate(
+    emissions_ng = base_emissions_co2e,
+    emissions_hp = elec_ghg_emissions + noelec_ghg_emissions,
+    abatement = emissions_ng - emissions_hp,  # tCO2e reduction
+    delta_cost = (lcoh - lcoh_ng) * heat_demand_mmbtu,  # $/yr difference
+    abatement_cost = delta_cost / abatement
+  ) |>
+  filter(abatement > 0)  # keep feasible reductions
+
+acc_curve <- acc_data |>
+  arrange(abatement_cost) |>
+  mutate(
+    cumulative_abatement = cumsum(abatement) / 1e6,  # in MtCO2e
+    abatement_cost = pmin(abatement_cost, 1000)      # cap for plotting readability
+  )
+
+ggplot(acc_curve, aes(x = cumulative_abatement, y = abatement_cost,
+                      fill = industry_clean)) +
+  geom_col(width = 0.9, color = "grey60") +
+  scale_y_continuous("Abatement cost ($/tCO₂e)", expand = c(0, 0)) +
+  scale_x_continuous("Cumulative abatement potential (MtCO₂e)", expand = c(0, 0)) +
+  facet_wrap(~ policy_label, ncol = 2) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black")
+  )
+#### FIG: COP VS. SPARK GAP ####
+
+
 
 #### FIG: CAPEX PLOT ####
 capex_kw_data <- 
