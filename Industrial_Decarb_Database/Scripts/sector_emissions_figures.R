@@ -11,7 +11,9 @@
 #                 2) Share of target subsector emissions covered by the ghgrp facilities
 #           
 #
-# Notes:    
+# Notes:    See EIA's "Model Documentation Report: Industrial Demand Module of the National 
+#           Energy Modeling System" for EIA category to NAICS code classification
+#               https://www.eia.gov/outlooks/aeo/nems/documentation/industrial/pdf/IDM_AEO2025.pdf
 # 
 # Inputs:   
 #         
@@ -69,15 +71,13 @@ eia_co2_sector_emissions = read.csv("misc report figures/data/EIA/Table_19._Ener
 ### Process data for charts
 #keep_values = c("Food Products", "Bulk Chemicals", "Paper Products", "Plastics", "Wood Products")
 eia_co2_industrial_emissions = eia_co2_sector_emissions |>
-   mutate(subsector = case_when(
-     end_use == "Food Products" ~ "Food & Beverage",
-     end_use == "Bulk Chemicals" ~ "Chemicals",
-     end_use == "Plastics" ~ "Chemicals",
-     end_use=="Paper Products" ~ "Pulp & Paper",
-     # end_use=="Wood Products" ~ "Pulp & Paper",
-     end_use %in% c("Agriculture", "Mining", "Construction") ~ paste("Non-Manufacturing Industrial:\n agriculture, mining, and construction"), 
-     TRUE ~ "Other Manufacturing"                                 # everything else -> Other
-   )) |>
+  mutate(subsector = case_when(
+    end_use == "Food Products" ~ "Food & Beverage",
+    end_use == "Bulk Chemicals" ~ "Chemicals",
+    end_use=="Paper Products" ~ "Pulp & Paper",
+    end_use %in% c("Agriculture", "Mining", "Construction") ~ paste("Non-Manufacturing Industrial:\n agriculture, mining, and construction"), 
+    TRUE ~ "Other Manufacturing"                                 # everything else -> Other
+  )) |>
   filter(sector == "Industrial") |>
   group_by(subsector) |>
   summarise(eia_MMmtco2_2023 = sum(eia_MMmtco2_2023, na.rm = TRUE)) |>
@@ -93,7 +93,7 @@ eia_co2_industrial_emissions = eia_co2_sector_emissions |>
   )) |>
   arrange(sort_order, -fraction) |>
   mutate(subsector_f = factor(subsector, levels = unique(subsector)))
-  
+
 
 ghgrp_emissions_2023 = read_excel("Industrial_Decarb_Database/Databases/Facility_and_Unit_Emissions_Database_v4.xlsx", 
                                   sheet="facility_emissions") |>
@@ -129,6 +129,41 @@ ghgrp_emissions_2023 = read_excel("Industrial_Decarb_Database/Databases/Facility
   )
 
 
+ghgrp_emissions_2023_unit = read_excel("Industrial_Decarb_Database/Databases/Facility_and_Unit_Emissions_Database_v4.xlsx", 
+                                       sheet="unit_emissions") |>
+  filter(reporting_year==2023 & subpart=="C") |>
+  filter(primary_naics %in% c(311221, 325193, 311313, 322120, 311224,
+                              325110, 325311, 312140, 311611, 311225,
+                              325180, 325194, 322130, 322110, 311421,
+                              325211, 311513, 311514, 311314, 311942,
+                              311613, 312120, 325120, 311423, 325312, 325212,
+                              311411, 311615, 322291, 311511, 311422, 311919, 311230)) |>
+  filter(ghg_name %in% c("Carbon Dioxide Non-Biogenic", "Nitrous Oxide (Co2 eq)", "Methane (Co2 eq)")) |>
+  left_join(naics_names, by=c("primary_naics")) |>
+  left_join(categories, by = c("naics_title")) |>
+  group_by(subsector) |>
+  summarise(ghg_quantity = sum(ghg_quantity, na.rm = TRUE))|>
+  ungroup() |>
+  mutate(ghg_quantity = ghg_quantity / 1000000) |> # convert to million metric tons
+  left_join(y = eia_co2_industrial_emissions, by = c("subsector")) |>
+  select(subsector, ghg_quantity, eia_MMmtco2_2023) |>
+  mutate(
+    ghgrp_share = carbon_dioxide_subpart_c,
+    other_share = eia_MMmtco2_2023 - carbon_dioxide_subpart_c
+  ) %>%
+  select(subsector, ghgrp_share, other_share) %>%
+  tidyr::pivot_longer(
+    cols = c(ghgrp_share, other_share),
+    names_to = "source",
+    values_to = "emissions"
+  ) |>
+  group_by(subsector) |>
+  mutate(
+    share = emissions / sum(emissions),              # proportion of each segment
+    label = percent(share) 
+  )
+
+
 ########## Charts ##########
 eia_co2_totals = eia_co2_sector_emissions |>
   group_by(sector) |>
@@ -143,28 +178,29 @@ eia_co2_totals = eia_co2_sector_emissions |>
     TRUE ~ 1                           
   )) |>
   arrange(sort_order, fraction) |>
-  mutate(sector_f = factor(sector, levels = unique(sector)))
+  mutate(sector_f = factor(sector, levels = unique(sector))) |>
+  mutate(label_vjust = ifelse(sector_f == "Commercial", 0.9, 0.5))
 
 pie = ggplot(eia_co2_totals, aes(x = "", y = eia_MMmtco2_2023, fill = sector_f)) +
   geom_bar(stat = "identity", width = 1, color = "white") +
   coord_polar("y", start = pi/4) +
-  geom_text(aes(label = label),
+  geom_text(aes(label = label, vjust = label_vjust),
             position = position_stack(vjust = 0.5),
             color = "black",
-            size = 4) +
+            size = 3) +
   theme_void() +
-  scale_fill_manual(values = c("Industrial" = "#FEBC11", "Commercial" = "#DCE1E5", 
-                               "Residential" = "#9CBEBE", "Transportation" = "#DAE6E6")) +
+  scale_fill_manual(values = c("Industrial" = "#FEBC11", "Commercial" = "#9CBEBE", 
+                               "Residential" = "#9CBEBE", "Transportation" = "#9CBEBE")) +
   theme(legend.position = "none")
 
 bar = ggplot(eia_co2_industrial_emissions, aes(x = "Percent Industrial Emissions", y = eia_MMmtco2_2023, fill = subsector_f)) +
   geom_bar(stat = "identity", color = "white") +
-   geom_text(
-     aes(label = scales::percent(fraction, accuracy = 1)),
-     position = position_stack(vjust = 0.5),
-     color = "black",
-     size = 4
-   ) +
+  geom_text(
+    aes(label = scales::percent(fraction, accuracy = 1)),
+    position = position_stack(vjust = 0.5),
+    color = "black",
+    size = 3
+  ) +
   labs(
     x = NULL,
     y = NULL,
@@ -173,18 +209,18 @@ bar = ggplot(eia_co2_industrial_emissions, aes(x = "Percent Industrial Emissions
   theme_void() +
   theme(axis.text.x = element_blank()) +
   scale_fill_manual( name = "Subsector",
-    values = c(
-    "Chemicals" = "#047C91",
-    "Food & Beverage" = "#FF7F7F",
-    "Pulp & Paper" = "#6D7D33",
-    "Other Manufacturing" = "gray80",
-    "Non-Manufacturing Industrial:\n agriculture, mining, and construction" = "darkgrey"
-  ))
+                     values = c(
+                       "Chemicals" = "#09847A",
+                       "Food & Beverage" = "#EF5645",
+                       "Pulp & Paper" = "#6D7D33",
+                       "Other Manufacturing" = "gray80",
+                       "Non-Manufacturing Industrial:\n agriculture, mining, and construction" = "darkgrey"
+                     ))
 
 combined = pie + bar + plot_layout(widths = c(5, 1)) + 
   plot_annotation(
-    title = "Energy-Related CO2 emissions, 2023", 
-    subtitle = "million metric tons",
+    #title = "Energy-Related CO2 emissions, 2023", 
+    #subtitle = "million metric tons",
     theme = theme(
       text = element_text(family = "Avenir"),
       plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
@@ -192,8 +228,8 @@ combined = pie + bar + plot_layout(widths = c(5, 1)) +
     )
   )
 combined
-grid.lines(x = unit(c(0.41, 0.52), "npc"), y = unit(c(0.63, 0.8325), "npc"), gp = gpar(col = "black", lwd = 2, lty=2))
-grid.lines(x = unit(c(0.4, 0.515), "npc"), y = unit(c(0.208, 0.07), "npc"), gp = gpar(col = "black", lwd = 2, lty=2))
+grid.lines(x = unit(c(0.41, 0.52), "npc"), y = unit(c(0.68, 0.93), "npc"), gp = gpar(col = "black", lwd = 2, lty=2))
+grid.lines(x = unit(c(0.375, 0.52), "npc"), y = unit(c(0.28, 0.07), "npc"), gp = gpar(col = "black", lwd = 2, lty=2))
 
 
 
@@ -218,29 +254,43 @@ ggsave("misc report figures/output/ghgrp_emissions_share_by_sector.png", plot = 
        width = 6, height = 4, dpi = 300)
 
 ### Verify in-text numbers
-ghgrp_2023 = read_excel("Industrial_Decarb_Database/Databases/Facility_and_Unit_Emissions_Database_v4.xlsx", 
-                                  sheet="facility_emissions") |>
-  filter(reporting_year==2023) |>
+ghgrp_2023_facilities = read_excel("Industrial_Decarb_Database/Databases/Facility_and_Unit_Emissions_Database_2023_v4.xlsx", 
+                                   sheet="descr_info") |>
+  filter(year==2023) |>
   filter(primary_naics %in% c(311221, 325193, 311313, 322120, 311224,
                               325110, 325311, 312140, 311611, 311225,
                               325180, 325194, 322130, 322110, 311421,
                               325211, 311513, 311514, 311314, 311942,
                               311613, 312120, 325120, 311423, 325312, 325212,
                               311411, 311615, 322291, 311511, 311422, 311919, 311230))
+length(unique(ghgrp_2023_facilities$facility_id)) #1026 facilities
 
-total_co2_subpart_c = ghgrp_2023 |>
-  summarize(total_co2_subpart_c = sum(carbon_dioxide_subpart_c, na.rm = TRUE))
+ghgrp_2023 = read_excel("Industrial_Decarb_Database/Databases/Facility_and_Unit_Emissions_Database_v4.xlsx", 
+                        sheet="facility_emissions") |>
+  filter(reporting_year==2023) |>
+  filter(primary_naics %in% c(311221, 325193, 311313, 322120, 311224,
+                              325110, 325311, 312140, 311611, 311225,
+                              325180, 325194, 322130, 322110, 311421,
+                              325211, 311513, 311514, 311314, 311942,
+                              311613, 312120, 325120, 311423, 325312, 325212,
+                              311411, 311615, 322291, 311511, 311422, 311919, 311230)) |>
+  mutate(
+    co2e_total = coalesce(carbon_dioxide_subpart_c, 0)  +
+      coalesce(methane_subpart_c, 0) * 28 +
+      coalesce(nitrous_oxide_subpart_c, 0) * 265
+  )
 
-ghgrp_industrial_emissions_share = ghgrp_emissions_2023 |>
-  group_by(source) |>
-  summarise(
-    emissions = sum(emissions)
-  ) |>
-  ungroup() # -> implies 33% GHGRP coverage of sectors in scope
+total_co2e_subpart_c = ghgrp_2023 |>
+  summarize(total_co2e_subpart_c = sum(co2e_total, na.rm = TRUE)) |> #139 MMT co2e
+  mutate(total_co2e_subpart_c = total_co2e_subpart_c / 1000000) |>
+  mutate(id = 1)
 
-#q's
-  # what is denominator for 99%? I get 33%
-  # is 199 MMT CO2 co2 eq or just co2? I get 139
-  #
+total_co2_eia_sectors = eia_co2_industrial_emissions |> 
+  filter(subsector %in% c("Chemicals", "Food & Beverage", "Pulp & Paper")) |>
+  summarise(emissions_relevant_subsectors = sum(eia_MMmtco2_2023, na.rm = TRUE)) |>
+  mutate(id = 1) |>
+  left_join(y = total_co2e_subpart_c, by = c("id")) |>
+  mutate(ghgrp_share = total_co2e_subpart_c/emissions_relevant_subsectors) #35%
 
-  
+summarise(eia_MMmtco2_2023 = sum(eia_MMmtco2_2023, na.rm = TRUE))
+
