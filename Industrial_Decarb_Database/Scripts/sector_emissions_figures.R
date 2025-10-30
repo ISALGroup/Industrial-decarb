@@ -148,9 +148,9 @@ ghgrp_emissions_2023_unit = read_excel("Industrial_Decarb_Database/Databases/Fac
   left_join(y = eia_co2_industrial_emissions, by = c("subsector")) |>
   select(subsector, ghg_quantity, eia_MMmtco2_2023) |>
   mutate(
-    ghgrp_share = carbon_dioxide_subpart_c,
-    other_share = eia_MMmtco2_2023 - carbon_dioxide_subpart_c
-  ) %>%
+    ghgrp_share = ghg_quantity,
+    other_share = eia_MMmtco2_2023 - ghg_quantity
+  ) |>
   select(subsector, ghgrp_share, other_share) %>%
   tidyr::pivot_longer(
     cols = c(ghgrp_share, other_share),
@@ -280,8 +280,34 @@ ghgrp_2023 = read_excel("Industrial_Decarb_Database/Databases/Facility_and_Unit_
       coalesce(nitrous_oxide_subpart_c, 0) * 265
   )
 
-total_co2e_subpart_c = ghgrp_2023 |>
-  summarize(total_co2e_subpart_c = sum(co2e_total, na.rm = TRUE)) |> #139 MMT co2e
+
+ghgrp_2023_unit = read_excel("Industrial_Decarb_Database/Databases/Facility_and_Unit_Emissions_Database_v4.xlsx", 
+                        sheet="unit_emissions") |>
+  filter(reporting_year==2023 & subpart %in% c("C", "AA")) |>
+  filter(primary_naics %in% c(311221, 325193, 311313, 322120, 311224,
+                              325110, 325311, 312140, 311611, 311225,
+                              325180, 325194, 322130, 322110, 311421,
+                              325211, 311513, 311514, 311314, 311942,
+                              311613, 312120, 325120, 311423, 325312, 325212,
+                              311411, 311615, 322291, 311511, 311422, 311919, 311230)) |>
+  filter(ghg_name %in% c("Nitrous Oxide", "Methane", "Carbon Dioxide Biogenic", 
+                         "Methane Spent Liquor", "Nitrous Oxide Spent Liquor",
+                         "Carbon Dioxide Biogenic (Spent Liquor)", "Carbon Dioxide Non-Biogenic")) |>
+  mutate(
+    co2e = case_when(
+      str_detect(ghg_name, "Carbon Dioxide") ~ coalesce(ghg_quantity, 0),
+      str_detect(ghg_name, "Methane") ~ coalesce(ghg_quantity, 0) * 28,
+      str_detect(ghg_name, "Nitrous Oxide") ~ coalesce(ghg_quantity, 0) *  265
+    )
+  )
+
+# total_co2e_subpart_c = ghgrp_2023 |>
+#   summarize(total_co2e_subpart_c = sum(co2e_total, na.rm = TRUE)) |> #139 MMT co2e
+#   mutate(total_co2e_subpart_c = total_co2e_subpart_c / 1000000) |>
+#   mutate(id = 1)
+
+total_co2e_subpart_c = ghgrp_2023_unit |>
+  summarize(total_co2e_subpart_c = sum(co2e, na.rm = TRUE)) |> #120 MMT co2e
   mutate(total_co2e_subpart_c = total_co2e_subpart_c / 1000000) |>
   mutate(id = 1)
 
@@ -290,7 +316,8 @@ total_co2_eia_sectors = eia_co2_industrial_emissions |>
   summarise(emissions_relevant_subsectors = sum(eia_MMmtco2_2023, na.rm = TRUE)) |>
   mutate(id = 1) |>
   left_join(y = total_co2e_subpart_c, by = c("id")) |>
-  mutate(ghgrp_share = total_co2e_subpart_c/emissions_relevant_subsectors) #35%
+  mutate(ghgrp_share = total_co2e_subpart_c/emissions_relevant_subsectors)  #35% based on facility
+                                                                            #30% based on unit
 
-summarise(eia_MMmtco2_2023 = sum(eia_MMmtco2_2023, na.rm = TRUE))
+
 
