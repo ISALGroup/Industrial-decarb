@@ -1,0 +1,26 @@
+{
+    "id": "CA62B33A",
+    "path": "~/Documents/UCSB Bren/Research/2035 Initiative Industrial Decarbonization/Industrial-decarb/Industrial_Decarb_Database/Scripts/sector_emissions_figures_v2.R",
+    "project_path": "Scripts/sector_emissions_figures_v2.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1762363914072.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "113,16",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1762385913,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1762385913692,
+    "read_only": false,
+    "read_only_alternatives": []
+}
