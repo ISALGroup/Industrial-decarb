@@ -1,0 +1,16 @@
+sector,tech_scenario_label,change_in_electricity_demand_gwh
+Chemicals,Adv Elec,73976.36144453523
+Chemicals,Adv Elec (EE+),61954.490609911365
+Chemicals,Baseline,0
+Chemicals,Drop-In Elec,130327.85960347806
+Chemicals,Drop-In Elec (EE+),106993.97137738517
+Food & Beverage,Adv Elec,60073.40162977373
+Food & Beverage,Adv Elec (EE+),55040.20774966659
+Food & Beverage,Baseline,0
+Food & Beverage,Drop-In Elec,100948.08657954121
+Food & Beverage,Drop-In Elec (EE+),91880.03715628746
+Pulp & Paper,Adv Elec,43477.94957187268
+Pulp & Paper,Adv Elec (EE+),40300.53843787422
+Pulp & Paper,Baseline,0
+Pulp & Paper,Drop-In Elec,67613.9301340745
+Pulp & Paper,Drop-In Elec (EE+),62515.05124085172

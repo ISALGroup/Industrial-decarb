@@ -85,17 +85,11 @@ eia_co2_sector_emissions = read_excel("misc report figures/data/EIA/2024_Figure_
 mecs = read_excel("misc report figures/data/EIA/MECS_onsite_emissions_subsector.xlsx") |>
   select(-naics_codes) |>
   filter(subsector!="All Manufacturing") |>
-  mutate(subsector = case_when(
-    str_detect(subsector, "Non-Manufacturing") ~ 
-      paste("Non-Manufacturing Industrial:\n agriculture, mining, and construction"), 
-    TRUE ~ subsector                                 # everything else -> Other
-  )) |>
   mutate(sort_order =  case_when(
     subsector %in% c("Other Manufacturing") ~ 2, 
-    str_detect(subsector, "Non-Manufacturing") ~ 2,
     TRUE ~ 1                           
   )) |>
-  arrange(sort_order, -share_industrial_emissions) |>
+  arrange(sort_order, -share_onsite_energy_emissions) |>
   mutate(subsector_f = factor(subsector, levels = unique(subsector))) 
 
 
@@ -117,11 +111,11 @@ pie = ggplot(eia_co2_sector_emissions, aes(x = "", y = emissions_2024, fill = se
                                "Electric Power" = "#9CBEBE")) +
   theme(legend.position = "none")
 
-bar = ggplot(mecs, aes(x = "Percent Industrial Emissions", y = onsite_emissions_MMT_co2e, 
+bar = ggplot(mecs, aes(x = "Percent Industrial Emissions", y = non_process_onsite_MMTco2e, 
                        fill = subsector_f)) +
   geom_bar(stat = "identity", color = "white") +
   geom_text(
-    aes(label = scales::percent(share_industrial_emissions, accuracy = 1)),
+    aes(label = scales::percent(share_onsite_energy_emissions, accuracy = 1)),
     position = position_stack(vjust = 0.5),
     color = "black",
     size = 3
@@ -133,13 +127,12 @@ bar = ggplot(mecs, aes(x = "Percent Industrial Emissions", y = onsite_emissions_
   ) +
   theme_void() +
   theme(axis.text.x = element_blank()) +
-  scale_fill_manual( name = "Subsector",
+  scale_fill_manual( name = "Manufacturing Sector",
                      values = c(
                        "Chemicals" = "#09847A",
                        "Food & Beverage" = "#EF5645",
                        "Pulp & Paper" = "#6D7D33",
-                       "Other Manufacturing" = "gray80",
-                       "Non-Manufacturing Industrial:\n agriculture, mining, and construction" = "darkgrey"
+                       "Other Manufacturing" = "gray80"
                      ))
 
 combined = pie + bar + plot_layout(widths = c(5, 1)) + 
