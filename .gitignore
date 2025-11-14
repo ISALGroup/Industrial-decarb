@@ -1,2 +1,17 @@
+# macOS junk
 .DS_Store
+**/.DS_Store
+
+# RStudio junk
 .Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# Generated output files
+national_results/outputs/
+**/outputs/
+
+# Temporary Excel lock files
+~$*.xlsx
+

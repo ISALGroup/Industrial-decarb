@@ -410,6 +410,12 @@ emissions_plot_nat <-
   
   theme_bw(base_size = 14) +
   theme(
+    axis.text.x = element_text(
+      size = 7,
+      angle = 45,
+      hjust = 1,
+      vjust = 1
+    ),
     legend.position = "bottom",
     legend.background = element_rect(
       fill = alpha("white", 0.8),
@@ -838,13 +844,21 @@ capex_plot <-
 
 capex_plot
 
-#### FIG: PERCENT IN PAYBACK -- NO POLICY####
-# --- Simplified sector colors ---
-sector_colors <- c(
-  "Chemicals*"      = "#09847A",
-  "Food & Beverage*" = "#EF5645",
-  "Pulp & Paper*"   = "#A67C52"
-)
+#### FIG: PERCENT IN PAYBACK -- NO POLICY ####
+
+payback_group_colors <- 
+  c(
+    "<5"     = "#003660",
+    "5-15"     = lighten("#003660", amount = .4),
+    "15+"     = lighten("#003660", amount = .8)
+  )
+
+# scenario_labels <- c(
+#   "eb_boiler"     = "E-Boiler",
+#   "eb_boiler_ee"  = "E-Boiler\n(EE+)",
+#   "hp_boiler"     = "Air-Source\nHTHP",
+#   "hp_boiler_ee"  = "Air-Source\nHTHP (EE+)"
+# )
 
 tech_scenario_labels <- c(
   "Drop-In\nElec",
@@ -892,7 +906,15 @@ in_payback_data_nopol <-
     values_to = "pct_in_payback"
   ) |>
   mutate(
-    sector = paste0(sector, "*"),
+    payback_group = case_when(
+      pct_group == 'sub_5' ~ '<5', 
+      pct_group == 'sub_15' ~ '5-15',
+      pct_group == 'plus_15' ~ '15+'
+    ), 
+    payback_group = factor(
+      payback_group,
+      levels = rev(names(payback_group_colors))
+    ), 
     tech_scenario_label = factor(
       tech_scenario_label, 
       levels = c(
@@ -905,69 +927,46 @@ in_payback_data_nopol <-
   ) |>
   filter(tech_scenario_label != 'Baseline')
 
-in_payback_plot_nopol <- 
-  ggplot(in_payback_data_nopol,
-         aes(
-           x = tech_scenario_label,
-           y = pct_in_payback,
-           fill = sector,
-           pattern = pct_group   # key aesthetic
-         )) +
+in_payback_plot_nopol   <- 
+  ggplot() +
   
-  geom_col_pattern(
-    position = "stack",
-    color = "grey90",
-    pattern_density = 0.4,
-    pattern_spacing = 0.04,
-    pattern_key_scale_factor = 0.6,
-    pattern_fill = 'white', 
-    pattern_colour = "white",      # color of hatch lines
-    pattern_size = 0.1        # thinner pattern lines (default ~0.5)
-  ) +
+  geom_col(data = in_payback_data_nopol,
+           aes(x = tech_scenario_label, y = pct_in_payback, fill = payback_group),
+           position = "stack", width = 0.6)+
   
   facet_wrap(~ sector, nrow = 1) +
   
-  scale_pattern_manual(
-    name = "Payback (Years)",
-    values = c(
-      "sub_5"   = "none",        # solid
-      "sub_15"  = "stripe",  # crosshatch
-      "plus_15" = "circle"       # dotted outline style (clean contrast)
-    ),
-    labels = rev(c("<5", "5–15", "15+"))
-  ) +
-  
   scale_fill_manual(
-    values = sector_colors,
-    guide = "none"
+    values = payback_group_colors,
+    name = "Payback (Years)",
+    breaks = names(payback_group_colors),
+    labels = names(payback_group_colors)
   ) +
   
+  scale_x_discrete(labels = tech_scenario_labels) +
+  
+  #scale_color_manual(values = sector_colors) +
   scale_y_continuous(limits = c(0, 100)) +
-  labs(
-    x = NULL,
-    y = "Percent of Facilities W/ Positive Payback"
-  ) +
+  
+  labs(x = NULL , y = "Percent of Facilities W/ Positive Payback", fill = "Payback (Years)" ) + 
   
   theme_bw(base_size = 14) +
   theme(
     strip.background = element_rect(fill = "grey90", color = "white"),
     legend.position = "right",
-    legend.background = element_rect(
-      fill = alpha("white", 0.8),
-      color = "black",
-      linewidth = 0.2
-    ),
+    legend.background = element_rect(fill = alpha("white", 0.8), color = "black", linewidth = 0.2),
     legend.text = element_text(size = 8),
     legend.title = element_text(size = 9),
     axis.text.x = element_text(
-      size = 7,
-      angle = 45,
-      hjust = 1,
-      vjust = 1
-    )
+      size = 7,              # smaller text
+      angle = 45,            # rotate 45 degrees
+      hjust = 1,             # right-align so they don’t overlap
+      vjust = 1              # vertically align nicely under ticks
+    )  
   )
 
 in_payback_plot_nopol
+
 
 #### FIG: DELTA NPV PLOT ####
 
@@ -1271,45 +1270,6 @@ top_payback_plot_nopol
 #### FIG: ABATEMENT COST CURVE ####
 
 fig_subsector_colors <- c(
-  # --- Chemicals (now mixed teal / blue / purple for stronger separation) ---
-  "Ethyl Alcohol"         = "#09847A",  # deep teal
-  "Fertilizers"           = "#4B9CD3",  # medium blue
-  "Industrial Gas"        = "#7B68EE",  # lavender-blue
-  "Inorganic Chemicals"   = "#2E5984",  # navy blue
-  "Petrochemicals"        = "#5EBAC3",  # light aqua
-  "Phosphatic Fertilizer" = "#8A2BE2",  # violet
-  "Plastics & Resins"     = "#3CB371",  # medium sea green
-  "Rubber"                = "#483D8B",  # dark slate blue
-  "Soybeans"              = "#6A5ACD",  # periwinkle
-  "Wood Chemicals"        = "#0FA396",  # greenish teal
-  
-  # --- Food & Beverage (expanded coral family with orange/yellow contrast) ---
-  "Beet Sugar"            = "#FEBC11",  # golden yellow
-  "Breakfast Cereal"      = "#F6A623",  # warm orange
-  "Breweries"             = "#F58C73",  # coral
-  "Cane Sugar"            = "#E65C47",  # deep coral-red
-  "Canning"               = "#F1735E",  # reddish orange
-  "Cheese"                = "#FDD38E",  # light gold
-  "Distilleries"          = "#E98B2A",  # amber orange
-  "Dried Foods"           = "#F27D63",  # salmon
-  "Fats & Oils"           = "#EF5645",  # red-orange
-  "Frozen Foods"          = "#FFD166",  # light yellow
-  "Meat (non-poultry)"    = "#D4503C",  # muted red
-  "Milk"                  = "#F8A18C",  # pale coral
-  "Other Dairy"           = "#B13222",  # dark brick
-  "Poultry"               = "#E37D1E",  # pumpkin
-  "Rendering"             = "#9B2C24",  # deep red-brown
-  "Snack Foods"           = "#F9A55B",  # light orange
-  "Specialty Canning"     = "#FBE7A1",  # pale yellow
-  "Spices"                = "#E9891A",  # golden orange
-  "Wet Corn Milling"      = "#EC3E32",  # red
-  
-  # --- Pulp & Paper (same olive base, slightly more contrast) ---
-  "Pulp & Paper"          = "#A67C52",  # olive green
-  "Toilet Paper"          = "#A2B86B"   # lighter olive
-)
-
-fig_subsector_colors <- c(
   "Cane Sugar"           = "#E41A1C",  # bright red
   "Pulp & Paper"         = "#A67C52",  
   "Fats & Oils"          = "#984EA3",  # purple
@@ -1605,7 +1565,8 @@ acc_state_plot <-
     linewidth = 0.4, color = "grey20"
   ) +
   scale_x_continuous("Cumulative Abatement Potential (MtCO2e)", expand = c(0, 0)) +
-  scale_y_continuous("Abatement Cost ($/tCO2e)", expand = c(0, 0)) +
+  scale_y_continuous("Abatement Cost ($/tCO2e)", expand = c(0, 0),limits = c(-200, 1000)) +
+
   theme_minimal(base_size = 12) +
   theme(
     panel.grid.minor = element_blank(),
@@ -1619,13 +1580,124 @@ acc_state_plot <-
 acc_state_plot
 
 
+#### FIG: ABATEMENT COST CURVE - TECH (DOESNT WORK YET) ####
+
+### PARAMETERS (unchanged)
+r <- .065
+t <- 25
+discount_sum <- (1 - (1 + r)^(-t)) / r
+
+
+### 1. Compute baseline NG lifetime cost per facility
+
+acc_data_ng <- 
+  facility_lcoh_df |>
+  filter(
+    tech_scenario == 'baseline',
+    policy_label == 'No Policy'
+  ) |>
+  group_by(facility_id) |>
+  summarize(
+    industry_clean = first(industry_clean),
+    opex_ng  = mean(opex,  na.rm = TRUE),
+    capex_ng = mean(capex, na.rm = TRUE),
+    heat     = mean(elec_orig_process_unit_heat_demand, na.rm = TRUE)
+  ) |>
+  ungroup() |>
+  mutate(lifetime_cost_ng = capex_ng + opex_ng * discount_sum)
+
+
+### 2. Compute lifetime costs for ALL TECH SCENARIOS
+
+acc_data_alltech <-
+  facility_lcoh_df |>
+  filter(policy_label == 'No Policy') |>
+  group_by(facility_id, tech_scenario) |>
+  summarize(
+    opex_tech  = mean(opex,  na.rm = TRUE),
+    capex_tech = mean(capex, na.rm = TRUE),
+    heat       = mean(elec_orig_process_unit_heat_demand, na.rm = TRUE)
+  ) |>
+  ungroup() |>
+  mutate(lifetime_cost_tech = capex_tech + opex_tech * discount_sum) |>
+  select(facility_id, tech_scenario, lifetime_cost_tech)
+
+
+### 3. Join in NG baseline + lifetime abatement
+
+acc_joined <-
+  acc_data_alltech |>
+  inner_join(acc_data_ng, by = "facility_id") |>
+  inner_join(emissions_df, by = "facility_id") |>  # has lifetime_emissions_reduc_mt_dc
+  group_by(industry_clean, tech_scenario) |>
+  summarize(
+    total_heat = sum(heat, na.rm = TRUE),
+    lifetime_cost_ng  = sum(lifetime_cost_ng,  na.rm = TRUE),
+    lifetime_cost_tech = sum(lifetime_cost_tech, na.rm = TRUE),
+    lifetime_emissions_reduc = sum(lifetime_emissions_reduc_mt_dc, na.rm = TRUE) * -1
+  ) |>
+  ungroup() |>
+  mutate(
+    lifetime_cost = lifetime_cost_tech - lifetime_cost_ng,
+    mac = lifetime_cost / lifetime_emissions_reduc
+  ) |>
+  arrange(tech_scenario, mac) |>
+  group_by(tech_scenario) |>
+  mutate(
+    x_min   = lag(cumsum(lifetime_emissions_reduc), default = 0),
+    x_max   = x_min + lifetime_emissions_reduc,
+    x_min_mt = x_min / 1e6,
+    x_max_mt = x_max / 1e6,
+    y_min    = 0,
+    y_max    = mac,
+    industry_clean = forcats::fct_reorder(industry_clean, mac)
+  ) |>
+  ungroup() |>
+  filter(mac < 1000)   # your same cutoff
+
+acc_plot_multi <- 
+  ggplot(acc_agg) +
+  geom_rect(
+    aes(xmin = x_min_mt,
+        xmax = x_max_mt,
+        ymin = pmin(y_min, y_max),
+        ymax = pmax(y_min, y_max),
+        fill = industry_clean),
+    color = "grey60"
+  ) +
+  geom_segment(
+    aes(x = x_min_mt, xend = x_max_mt, y = y_max, yend = y_max),
+    linewidth = 0.4, color = "grey20"
+  ) +
+  scale_fill_manual(
+    name = "Subsector (left to right)",
+    values = fig_subsector_colors
+  ) +
+  scale_x_continuous("Cumulative Abatement Potential (MtCO2e)", expand = c(0, 0)) +
+  scale_y_continuous("Abatement Cost ($/tCO2e)", expand = c(0, 0)) +
+  facet_wrap(~ tech_scenario, ncol = 1, scales = "free_x") +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black"),
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 9),
+    legend.key.size = unit(0.4, "cm"),
+    strip.text = element_text(size = 11, face = "bold")
+  )
+
+acc_plot_multi
+
+
+
 #### FIG: PERCENT IN PAYBACK -- POLICY####
-# --- Simplified sector colors ---
-sector_colors <- c(
-  "Chemicals*"      = "#09847A",
-  "Food & Beverage*" = "#EF5645",
-  "Pulp & Paper*"   = "#A67C52"
-)
+payback_group_colors <- 
+  c(
+    "<5"     = "#003660",
+    "5-15"     = lighten("#003660", amount = .4),
+    "15+"     = lighten("#003660", amount = .8)
+  )
+
 
 fig_policies <- c(
   'No Policy',
@@ -1638,9 +1710,9 @@ fig_policies <- c(
 policy_labels <- c(
   'No Policy' = 'No Policy',
   'Elec -25%' =  'Elec -25%',
-  'Capex -30%, Elec -25%' = 'Capex -30%,\nElec -25%',
-  'Elec -50%' = 'Elec -50%', 
-  'PTC $10/MMBtu' = 'PTC\n$10/MMBtu'
+  'Capex -30%, Elec -25%' = 'Capex -30%, Elec -25%',
+  'Elec -50%' = 'Elec -50%',
+  'PTC $10/MMBtu' = 'PTC $10/MMBtu'
 )
 
 in_payback_data <- 
@@ -1684,73 +1756,60 @@ in_payback_data <-
     values_to = "pct_in_payback"
   ) |>
   mutate(
+    payback_group = case_when(
+      pct_group == 'sub_5' ~ '<5', 
+      pct_group == 'sub_15' ~ '5-15',
+      pct_group == 'plus_15' ~ '15+'
+    ), 
+    payback_group = factor(
+      payback_group,
+      levels = rev(names(payback_group_colors))
+    ), 
+    
     sector = paste0(sector, "*"),
+    
     policy_label = factor(
       policy_label, 
       levels = fig_policies
     )
   ) 
 
-in_payback_plot <- 
-  ggplot(in_payback_data,
-         aes(
-           x = policy_label,
-           y = pct_in_payback,
-           fill = sector,
-           pattern = pct_group   # key aesthetic
-         )) +
+in_payback_plot   <- 
+  ggplot() +
   
-  geom_col_pattern(
-    position = "stack",
-    color = "grey90",
-    pattern_density = 0.4,
-    pattern_spacing = 0.04,
-    pattern_key_scale_factor = 0.6,
-    pattern_fill = 'white', 
-    pattern_colour = "white",      # color of hatch lines
-    pattern_size = 0.1        # thinner pattern lines (default ~0.5)
-  ) +
+  geom_col(data = in_payback_data,
+           aes(x = policy_label, y = pct_in_payback, fill = payback_group),
+           position = "stack", width = 0.6)+
   
   facet_wrap(~ sector, nrow = 1) +
   
-  scale_pattern_manual(
-    name = "Payback (Years)",
-    values = c(
-      "sub_5"   = "none",        # solid
-      "sub_15"  = "stripe",  # crosshatch
-      "plus_15" = "circle"       # dotted outline style (clean contrast)
-    ),
-    labels = rev(c("<5", "5–15", "15+"))
-  ) +
-  
   scale_fill_manual(
-    values = sector_colors,
-    guide = "none"
+    values = payback_group_colors,
+    name = "Payback (Years)",
+    breaks = names(payback_group_colors),
+    labels = names(payback_group_colors)
   ) +
   
+  # scale_x_discrete(labels = fig_) +
+  
+  #scale_color_manual(values = sector_colors) +
   scale_y_continuous(limits = c(0, 100)) +
-  labs(
-    x = NULL,
-    y = "Percent of Facilities W/ Positive Payback"
-  ) +
+  
+  labs(x = NULL , y = "Percent of Facilities W/ Positive Payback", fill = "Payback (Years)" ) + 
   
   theme_bw(base_size = 14) +
   theme(
     strip.background = element_rect(fill = "grey90", color = "white"),
     legend.position = "right",
-    legend.background = element_rect(
-      fill = alpha("white", 0.8),
-      color = "black",
-      linewidth = 0.2
-    ),
+    legend.background = element_rect(fill = alpha("white", 0.8), color = "black", linewidth = 0.2),
     legend.text = element_text(size = 8),
     legend.title = element_text(size = 9),
     axis.text.x = element_text(
-      size = 7,
-      angle = 45,
-      hjust = 1,
-      vjust = 1
-    )
+      size = 7,              # smaller text
+      angle = 45,            # rotate 45 degrees
+      hjust = 1,             # right-align so they don’t overlap
+      vjust = 1              # vertically align nicely under ticks
+    )  
   )
 
 in_payback_plot
@@ -2003,7 +2062,8 @@ top_payback_data <-
   filter(
     !is.na(payback_no_policy),
     payback_ptc < 10, 
-    payback_no_policy >= 20, 
+    payback_no_policy >= 20,
+    payback_no_policy < 100,
     # excluding this because of funky outcomes stemming from facilities moving in and out of payback in best/worse scenarios, 
     # which causes the electricity discount to look worse (because facilities get into payback in the worst case, bringing the facility
     # average up for the electricity policy)
@@ -2062,21 +2122,20 @@ fig_policies <- c(
 
 fig_subsector_colors <- c(
   "Cane Sugar"           = "#E41A1C",  # bright red
-  "Pulp & Paper"         = "#4DAF4A",  # vivid green ✅
+  "Pulp & Paper"         = "#A67C52",  
   "Fats & Oils"          = "#984EA3",  # purple
   "Spices"               = "#FF7F00",  # orange
   "Wet Corn Milling"     = "#D73027",  # deep red ✅
   "Rubber"               = "#4575B4",  # blue
   "Plastics & Resins"    = "#F781BF",  # pink
-  "Ethyl Alcohol"        = "#00A7A0",  # teal ✅
+  "Ethyl Alcohol"        = "#3288BD",  # teal ✅
   "Specialty Canning"    = "#FFD92F",  # yellow
-  "Breweries"            = "#1B9E77",  # dark green-teal
+  "Breweries"            = "#4B3F72",  # dark green-teal
   "Milk"                 = "#E6AB02",  # gold
-  "Soybeans"             = "#984EA3",  # purple (reused)
-  "Fertilizers"          = "#A6761D",  # brown-gold
+  "Soybeans"             = "#984EA3",  # purple (reused, alternate tone OK)
+  "Fertilizers"          = "#4C7D8D",  # brown-gold
   "Distilleries"         = "#7570B3",  # indigo
-  "Beet Sugar"           = "#66C2A5",  # light aqua
-  "Cheese"               = "#E7298A",  # fuchsia
+  "Beet Sugar"           = "#E7298A",  # light aqua
   "Breakfast Cereal"     = "#B2DF8A",  # light green
   "Meat (non-poultry)"   = "#FFB300",  # orange-yellow
   "Toilet Paper"         = "#01665E",  # dark teal
@@ -2086,8 +2145,25 @@ fig_subsector_colors <- c(
   "Dried Foods"          = "#F46D43",  # orange-coral
   "Other Dairy"          = "#8DD3C7",  # mint
   "Snack Foods"          = "#E6F598",  # pale lime
-  "Canning"              = "#3288BD"   # blue
+  "Industrial Gas"        = "#00A6C2",  # teal-blue
+  "Inorganic Chemicals"   = "#4B3F72",  # indigo-violet
+  "Petrochemicals"        = "#70543E",  # warm brown-gray
+  "Phosphatic Fertilizer" = "#D9467E",  # rose-magenta
+  "Wood Chemicals"        = "#8C6A4E"   # natural wood tone
 )
+
+# fig_subsector_colors <- c(
+#   "Beet Sugar"        = "#C51B29",  # deep red
+#   "Breweries"         = "#D6761C",  # burnt orange
+#   "Ethyl Alcohol"     = "#D12F8A",  # magenta
+#   "Meat (non-poultry)"= "#9E2A2A",  # brick red
+#   "Petrochemicals"    = "#2B3A67",  # navy blue
+#   "Plastics & Resins" = "#7D3AC1",  # violet
+#   "Pulp & Paper"      = "#8C6239",  # warm brown
+#   "Rendering"         = "#B24A1F",  # rust
+#   "Soybeans"          = "#6E6E7E",  # slate gray
+#   "Wet Corn Milling"  = "#3A5FCD"   # royal blue
+# )
 
 # --- Baseline NPV for reference ---
 baseline_npv <- 
@@ -2137,11 +2213,7 @@ delta_npv_xy_state_data <-
   mutate(
     statesub = paste(state, industry_clean, sep = " "),
     statesub_label = str_wrap(statesub, width = 10),
-    policy_label = factor(policy_label, levels = fig_policies),
-    policy_label = fct_recode(
-      policy_label,
-      "Capex -30%,\nElec -25%" = "Capex -30%, Elec -25%"
-    )
+    policy_label = factor(policy_label, levels = fig_policies)
   ) |>
   select(state, industry_clean, sector, policy_label, npv_delta_pct, in_scope_mt_25) |>
   filter(!is.na(npv_delta_pct), abs(npv_delta_pct) < 1000) |>
@@ -2150,7 +2222,7 @@ delta_npv_xy_state_data <-
 # --- Plot (same style/layout as Payback XY figure) ---
 delta_npv_xy_state_plot <- 
   ggplot(delta_npv_xy_state_data,
-         aes(x = state,
+         aes(x = policy_label,
              y = npv_delta_pct,
              size = in_scope_mt_25,
              fill = industry_clean)) +
@@ -2158,7 +2230,7 @@ delta_npv_xy_state_plot <-
     shape = 21, color = "grey30", alpha = 0.85, stroke = 0.3,
     position = position_jitter(width = 0.2, height = 0)
   ) +
-  facet_wrap(~ policy_label, nrow = 1) +
+  facet_wrap(~ state, nrow = 1) +
   scale_fill_manual(values = fig_subsector_colors, name = "Subsector") +
   scale_size_continuous(
     range = c(3, 15),
@@ -2381,6 +2453,13 @@ eim_plot_nat <-
   
   theme_bw(base_size = 14) +
   theme(
+    # --- X-axis tick labels ---
+    axis.text.x = element_text(
+      size = 8,              # smaller text
+      # angle = 45,            # rotate 45 degrees
+      # hjust = 1,             # right-align so they don’t overlap
+      # vjust = 1              # vertically align nicely under ticks
+    ),
     legend.position = "bottom",
     legend.background = element_rect(
       fill = alpha("white", 0.8),
@@ -2591,11 +2670,11 @@ eim_plot_state <-
     # --- X-axis tick labels ---
     axis.text.x = element_text(
       size = 8,              # smaller text
-      angle = 45,            # rotate 45 degrees
-      hjust = 1,             # right-align so they don’t overlap
-      vjust = 1              # vertically align nicely under ticks
+      # angle = 45,            # rotate 45 degrees
+      # hjust = 1,             # right-align so they don’t overlap
+      # vjust = 1              # vertically align nicely under ticks
     ),
-    
+
     legend.text = element_text(size = 8),
     legend.title = element_text(size = 9),
     legend.spacing.x = unit(0.2, "cm"),        # moderate horizontal space between items
@@ -2795,6 +2874,287 @@ check <-
   facility_lcoh_df |>
   filter(lcoh == 0 | is.na(lcoh)) |>
   distinct(facility_id, .keep_all = TRUE)
+
+#### FIG: PERCENT IN PAYBACK -- NO POLICY -- W HASHING ####
+# --- Simplified sector colors ---
+sector_colors <- c(
+  "Chemicals*"      = "#09847A",
+  "Food & Beverage*" = "#EF5645",
+  "Pulp & Paper*"   = "#A67C52"
+)
+
+tech_scenario_labels <- c(
+  "Drop-In\nElec",
+  "Drop-In\nElec (EE+)",
+  "Adv\nElec",
+  "Adv\nElec (EE+)"
+)
+
+in_payback_data_nopol <- 
+  facility_lcoh_df |>
+  filter(
+    policy_label == 'No Policy' 
+  ) |>
+  group_by(facility_id, tech_scenario_label) |>
+  summarize(
+    industry_clean = first(industry_clean),
+    sector = first(sector), 
+    state = first(state), 
+    
+    payback_years = mean(payback_years, na.rm = TRUE)
+  ) |>
+  ungroup() |>
+  mutate(
+    payback_sub_5 = if_else(payback_years <= 5, 1, 0), 
+    payback_sub_15 = if_else(payback_years <= 15 & payback_years > 5, 1, 0), 
+    payback_plus_15 = if_else(!is.na(payback_years) & payback_years > 15, 1, 0)
+  ) |>
+  group_by(tech_scenario_label, sector) |>
+  summarize(
+    n_facilities = n(),
+    n_sub_5 = sum(payback_sub_5, na.rm = TRUE),
+    n_sub_15 = sum(payback_sub_15, na.rm = TRUE), 
+    n_plus_15 = sum(payback_plus_15, na.rm = TRUE)
+  ) |>
+  ungroup() |>
+  mutate(
+    pct_sub_5 = (n_sub_5 / n_facilities) * 100, 
+    pct_sub_15 = (n_sub_15 / n_facilities) * 100, 
+    pct_plus_15 = (n_plus_15 / n_facilities) * 100
+  ) |>
+  pivot_longer(
+    cols = starts_with('pct'), 
+    names_to = "pct_group", 
+    names_prefix = "pct_", 
+    values_to = "pct_in_payback"
+  ) |>
+  mutate(
+    sector = paste0(sector, "*"),
+    tech_scenario_label = factor(
+      tech_scenario_label, 
+      levels = c(
+        "Drop-In Elec",
+        "Drop-In Elec (EE+)",
+        "Adv Elec",
+        "Adv Elec (EE+)"
+      )
+    )
+  ) |>
+  filter(tech_scenario_label != 'Baseline')
+
+in_payback_plot_nopol <- 
+  ggplot(in_payback_data_nopol,
+         aes(
+           x = tech_scenario_label,
+           y = pct_in_payback,
+           fill = sector,
+           pattern = pct_group   # key aesthetic
+         )) +
+  
+  geom_col_pattern(
+    position = "stack",
+    color = "grey90",
+    pattern_density = 0.4,
+    pattern_spacing = 0.04,
+    pattern_key_scale_factor = 0.6,
+    pattern_fill = 'white', 
+    pattern_colour = "white",      # color of hatch lines
+    pattern_size = 0.1        # thinner pattern lines (default ~0.5)
+  ) +
+  
+  facet_wrap(~ sector, nrow = 1) +
+  
+  scale_pattern_manual(
+    name = "Payback (Years)",
+    values = c(
+      "sub_5"   = "none",        # solid
+      "sub_15"  = "stripe",  # crosshatch
+      "plus_15" = "circle"       # dotted outline style (clean contrast)
+    ),
+    labels = rev(c("<5", "5–15", "15+"))
+  ) +
+  
+  scale_fill_manual(
+    values = sector_colors,
+    guide = "none"
+  ) +
+  
+  scale_y_continuous(limits = c(0, 100)) +
+  labs(
+    x = NULL,
+    y = "Percent of Facilities W/ Positive Payback"
+  ) +
+  
+  theme_bw(base_size = 14) +
+  theme(
+    strip.background = element_rect(fill = "grey90", color = "white"),
+    legend.position = "right",
+    legend.background = element_rect(
+      fill = alpha("white", 0.8),
+      color = "black",
+      linewidth = 0.2
+    ),
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 9),
+    axis.text.x = element_text(
+      size = 7,
+      angle = 45,
+      hjust = 1,
+      vjust = 1
+    )
+  )
+
+in_payback_plot_nopol
+
+
+#### FIG: PERCENT IN PAYBACK -- POLICY -- W HASHING ####
+payback_group_colors <- 
+  c(
+    "<5"     = "#003660",
+    "5-15"     = lighten("#003660", amount = .4),
+    "15+"     = lighten("#003660", amount = .8)
+  )
+
+
+fig_policies <- c(
+  'No Policy',
+  'Elec -25%', 
+  'Capex -30%, Elec -25%',
+  'Elec -50%', 
+  'PTC $10/MMBtu'
+)
+
+policy_labels <- c(
+  'No Policy' = 'No Policy',
+  'Elec -25%' =  'Elec -25%',
+  'Capex -30%, Elec -25%' = 'Capex -30%,\nElec -25%',
+  'Elec -50%' = 'Elec -50%', 
+  'PTC $10/MMBtu' = 'PTC\n$10/MMBtu'
+)
+
+in_payback_data <- 
+  facility_lcoh_df |>
+  filter(
+    tech_scenario == 'hp_boiler_ee', 
+    policy_label %in% fig_policies
+  ) |>
+  group_by(facility_id, policy_label) |>
+  summarize(
+    industry_clean = first(industry_clean),
+    sector = first(sector), 
+    state = first(state), 
+    
+    payback_years = mean(payback_years, na.rm = T)
+  ) |>
+  ungroup() |>
+  
+  mutate(
+    sub_5 = if_else(payback_years <= 5, 1, 0), 
+    sub_15 = if_else(payback_years <= 15 & payback_years > 5, 1, 0), 
+    plus_15 = if_else(!is.na(payback_years) & payback_years > 15, 1, 0)
+  ) |>
+  group_by(policy_label, sector) |>
+  summarize(
+    n_facilities = n(),
+    n_sub_5 = sum(sub_5, na.rm = TRUE),
+    n_sub_15 = sum(sub_15, na.rm = TRUE), 
+    n_plus_15 = sum(plus_15, na.rm = TRUE)
+  ) |>
+  ungroup() |>
+  mutate(
+    pct_sub_5 = (n_sub_5 / n_facilities) * 100, 
+    pct_sub_15 = (n_sub_15 / n_facilities) * 100, 
+    pct_plus_15 = (n_plus_15 / n_facilities) * 100
+  ) |>
+  pivot_longer(
+    cols = starts_with('pct'), 
+    names_to = "pct_group", 
+    names_prefix = "pct_", 
+    values_to = "pct_in_payback"
+  ) |>
+  mutate(
+    payback_group = case_when(
+      pct_group == 'sub_5' ~ '<5', 
+      pct_group == 'sub_15' ~ '5-15',
+      pct_group == 'plus_15' ~ '15+'
+    ), 
+    payback_group = factor(
+      payback_group,
+      levels = rev(names(payback_group_colors))
+    ), 
+    
+    sector = paste0(sector, "*"),
+    
+    policy_label = factor(
+      policy_label, 
+      levels = fig_policies
+    )
+  ) 
+
+in_payback_plot <- 
+  ggplot(in_payback_data,
+         aes(
+           x = policy_label,
+           y = pct_in_payback,
+           fill = sector,
+           pattern = pct_group   # key aesthetic
+         )) +
+  
+  geom_col_pattern(
+    position = "stack",
+    color = "grey90",
+    pattern_density = 0.4,
+    pattern_spacing = 0.04,
+    pattern_key_scale_factor = 0.6,
+    pattern_fill = 'white', 
+    pattern_colour = "white",      # color of hatch lines
+    pattern_size = 0.1        # thinner pattern lines (default ~0.5)
+  ) +
+  
+  facet_wrap(~ sector, nrow = 1) +
+  
+  scale_pattern_manual(
+    name = "Payback (Years)",
+    values = c(
+      "sub_5"   = "none",        # solid
+      "sub_15"  = "stripe",  # crosshatch
+      "plus_15" = "circle"       # dotted outline style (clean contrast)
+    ),
+    labels = rev(c("<5", "5–15", "15+"))
+  ) +
+  
+  scale_fill_manual(
+    values = sector_colors,
+    guide = "none"
+  ) +
+  
+  scale_y_continuous(limits = c(0, 100)) +
+  labs(
+    x = NULL,
+    y = "Percent of Facilities W/ Positive Payback"
+  ) +
+  
+  theme_bw(base_size = 14) +
+  theme(
+    strip.background = element_rect(fill = "grey90", color = "white"),
+    legend.position = "right",
+    legend.background = element_rect(
+      fill = alpha("white", 0.8),
+      color = "black",
+      linewidth = 0.2
+    ),
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 9),
+    axis.text.x = element_text(
+      size = 7,
+      angle = 45,
+      hjust = 1,
+      vjust = 1
+    )
+  )
+
+in_payback_plot
+
 
 #### FIG: PAYBACK BUBBLE X/Y -- STATE ####
 
