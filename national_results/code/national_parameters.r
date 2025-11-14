@@ -21,7 +21,7 @@ eia_elec_range <-
   group_by(state) |>
   dplyr::summarize(
     # weighted mean
-    elec_price_mean = Hmisc::wtd.mean(elec_price, weights = sales_megawatthours, na.rm = TRUE),
+    elec_pricae_mean = Hmisc::wtd.mean(elec_price, weights = sales_megawatthours, na.rm = TRUE),
     
     # weighted percentiles 
     elec_price_low  = Hmisc::wtd.quantile(elec_price, weights = sales_megawatthours,
