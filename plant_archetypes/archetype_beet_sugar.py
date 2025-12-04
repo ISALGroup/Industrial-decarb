@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed, May 28, 2025
+Created on Thu, May 7, 2025
 
-@author: Jason Ye
+@author: Jason
 """
 
 #Import the required modules
@@ -300,7 +300,7 @@ Unit4.calculations = {'Raw juice' : juiceheater}
 Unit5 = Unit('Carbonation')
 Unit5.expected_flows_in = ['Heated juice', 'Exhaust (Lime kiln)', 'Calcium hydroxide', 'Electricity (Carbonation)']
 Unit5.expected_flows_out = ['Thin juice', 'Precipitate', 'Exhaust (Carbonation)']
-Unit5.coefficients = {'Air ratio' : 9.25, 'Gas in temperature' : 315.6, 'CaO2H2 temperature' : 126, 'Precipitate temperature' : 204.4, 'Losses' : 13.4/92.3, 'Electricity per raw material' : 2.0/1.2*0.000293071/0.453592, 'Reaction heat' : -1285713.542} 
+Unit5.coefficients = {'Air ratio' : 9.25, 'Gas in temperature' : 900, 'CaO2H2 temperature' : 620, 'Precipitate temperature' : 204.4, 'Losses' : 13.4/92.3, 'Electricity per raw material' : 2.0/1.2*0.000293071/0.453592, 'Reaction heat' : -1285713.542} 
 
 def carbonation_tank(heated_juice_flow, coeff):
 
@@ -348,6 +348,8 @@ def carbonation_tank(heated_juice_flow, coeff):
     residual_heat = Q_gas + heated_juice_in_heat + Q_CaO2H2 - coeff['Reaction heat'] - coeff['Losses']*heated_juice_in_heat - heat_water_out - Q_air_out - Q_CaCO3
     T_out_main = (residual_heat + sucrose_amount*Cp_sucrose*T_ref + water_amount*Cp_water_liquid*T_ref)/(sucrose_amount*Cp_sucrose + water_amount*Cp_water_liquid)
 
+    print(T_out_main)
+
     return [{'name' : 'Thin juice', 'components' : ['water','sucrose'], 'composition': [water_mass_fraction,sucrose_mass_fraction], 'mass_flow_rate' : heated_juice_amount,
                      'flow_type': 'Process flow', 'temperature' : T_out_main, 'pressure':1 , 'heat_flow_rate' :residual_heat ,'In or out' : 'Out', 'Set calc' : True, 'Set shear' : False},
             {'name' : 'Exhaust (Lime kiln)', 'components' : ['Air','CO2'], 'composition': [mass_air/mass_gas,mass_CO2/mass_gas], 'mass_flow_rate' : mass_gas,
@@ -369,7 +371,8 @@ Unit5.calculations = {'Heated juice' : carbonation_tank}
 Unit6 = Unit('Lime kiln')
 Unit6.expected_flows_in = ['Air (Lime kiln)', 'Limestone', 'Natural gas (Lime kiln)']
 Unit6.expected_flows_out = ['Quicklime', 'Exhaust (Lime kiln)']
-Unit6.coefficients = {'Quicklime temperature' : 121.1, 'Stack temperature' : 315.6, 'Air ratio' : 9.25, 'Losses' : 0.1} 
+#Unit6.coefficients = {'Quicklime temperature' : 121.1, 'Stack temperature' : 315.6, 'Air ratio' : 9.25, 'Losses' : 0.1} 
+Unit6.coefficients = {'Quicklime temperature' : 900, 'Stack temperature' : 900, 'Air ratio' : 9.25, 'Losses' : 0.1}
 
 def limekiln(limestone_flow, coeff):
 
@@ -427,6 +430,7 @@ def limeslaker(quicklime_flow, coeff):
     Q_CaO2H2 = Q_quicklime + water_heat
     T_CaO2H2 = Q_CaO2H2/(CaO2H2_amount*Cp_CaO2H2) + T_ref
 
+    print(T_CaO2H2)
 
     return [{'name' : 'Calcium hydroxide', 'components' : ['CaO2H2'], 'composition': [1], 'mass_flow_rate' : CaO2H2_amount,
                      'flow_type': 'Process flow', 'temperature' : T_CaO2H2, 'pressure':1 , 'heat_flow_rate' :Q_CaO2H2 ,'In or out' : 'Out', 'Set calc' : True, 'Set shear' : True},
@@ -788,7 +792,7 @@ def drying_and_palletizing(pressed_pulp_flow, coeff):
     pulp_amount = pulp_mass_fraction * pressed_pulp_amount
 
     #Obtain the electricity requirement
-    electricity_required = coeff['Electricity to input energy ratio'] * pressed_pulp_heat * 0.000278
+    electricity_required = coeff['Electricity to input energy ratio'] * pressed_pulp_heat * 0.000278 * 1/3
 
     #Compute the fuel requirement
     fuel_amount = coeff['Fuel per kg beet entering'] * inlet_beet_mixture
@@ -817,7 +821,7 @@ def drying_and_palletizing(pressed_pulp_flow, coeff):
     T_out = fsolve(exhaust_T, 200)
 
     return [{'name' : 'Final pulp', 'components' : ['water','pulp'], 'composition': [1 - coeff['Final pulp purity'], coeff['Final pulp purity']], 'mass_flow_rate' : water_in_final_pulp+pulp_amount,
-                     'flow_type': 'Product', 'temperature' : 25, 'pressure':1 , 'heat_flow_rate' :0 ,'In or out' : 'Out', 'Set calc' : False, 'Set shear' : False},
+                     'flow_type': 'Product', 'temperature' : 93.3, 'pressure':1 , 'heat_flow_rate' :0 ,'In or out' : 'Out', 'Set calc' : False, 'Set shear' : False},
             {'name' : 'Exhaust (Pulp drying)', 'components' : ['water','Air'], 'composition': [water_in_exhaust/(water_in_exhaust+air_required),air_required/(water_in_exhaust+air_required)], 'mass_flow_rate' : water_in_exhaust+air_required,
                      'flow_type': 'Exhaust', 'temperature' : T_out, 'pressure':1 , 'heat_flow_rate' :heat_exhaust ,'In or out' : 'Out', 'Set calc' : False, 'Set shear' : False},
             {'name' : 'Fuel (Pulp drying)', 'components' : ['Natural gas'], 'composition': [1], 'mass_flow_rate' : 0,
@@ -852,3 +856,9 @@ main(allflows, processunits, f_print)
 for unit in processunits:
     unit.check_heat_balance(allflows)
     unit.check_mass_balance(allflows)
+
+unit_recap_to_file('new_pparch', allflows, processunits)
+
+utilities_recap('new_pparch', allflows, processunits)
+
+flows_to_file('new_flow', allflows)
